@@ -11,7 +11,7 @@ BLOCK = """<!-- Matomo (self-hosted, matomo.designburgapps.com): one site per ho
      no cookies, IPs anonymised on the server, Do Not Track respected -->
 <script>
   var _paq = window._paq = window._paq || [];
-  var _mtmSite = {"zp12.designburgapps.com": "3", "fm1.designburgapps.com": "4", "designburgapps.com": "5",
+  var _mtmSite = {"zp12.designburgapps.com": "3", "thefirmwarehub.com": "4", "fm1.designburgapps.com": "4", "designburgapps.com": "5",
                   "www.designburgapps.com": "5"}[location.hostname] || "1";
   _paq.push(['setDomains', [location.hostname]]);
   _paq.push(['disableCookies']);
