@@ -115,7 +115,7 @@
      no cookies, IPs anonymised on the server, Do Not Track respected -->
 <script>
   var _paq = window._paq = window._paq || [];
-  var _mtmSite = {"zp12.designburgapps.com": "3", "fm1.designburgapps.com": "4", "designburgapps.com": "5",
+  var _mtmSite = {"zp12.designburgapps.com": "3", "thefirmwarehub.com": "4", "fm1.designburgapps.com": "4", "designburgapps.com": "5",
                   "www.designburgapps.com": "5"}[location.hostname] || "1";
   _paq.push(['setDomains', [location.hostname]]);
   _paq.push(['disableCookies']);
@@ -346,6 +346,10 @@ const OUR_LOADER = (id) => /^ota-FM-1_9\d\d$/i.test(id.text);
 // CLIPPER ("Clipper"), under a firmware named after itself ("SLOOP"), the update loaders, and the names
 // Windows / macOS give the stock firmware (as SLOOP 2.6's fm1ota.js)
 const FM1_PORT = /fm-1|felucca|sloop|clipper|ota|composite|sinco|usb-midi/i;
+// the ports of a MIDIInputMap / MIDIOutputMap as an array: by forEach, as iOS Web MIDI apps (Web MIDI Browser)
+// hand out maps whose values() is no iterable, so [...map.values()] and for..of throw there
+// (some hand the arguments over as (key, port): the port is whichever is an object)
+const ports = (map) => { const a = []; map.forEach((x, y) => a.push(x && typeof x === "object" ? x : y)); return a; };
 
 // errors carry a code the pages translate: notfound, model, stopped, noloader, lost, noreturn,
 // mismatch (detail: the identity the device reports), badreq, foreign (detail: the loader's identity)
@@ -450,8 +454,8 @@ class Updater {
 
   // every in/out pair with the same port name that answers the handshake
   async find(filter) {
-    const outs = [...this.access.outputs.values()];
-    for (const input of this.access.inputs.values()) {
+    const outs = ports(this.access.outputs);
+    for (const input of ports(this.access.inputs)) {
       if (input.state === "disconnected") continue;
       if (!FM1_PORT.test(input.name || "")) continue;   // never probe other gear
       const output = outs.find((o) => o.name === input.name) || (outs.length === 1 ? outs[0] : null);
@@ -467,7 +471,7 @@ class Updater {
 
   // the MIDI inputs there are, for the "not found" message: " (MIDI: a, b)" (a port the installer skipped shows)
   seen() {
-    const names = [...this.access.inputs.values()].filter((p) => p.state !== "disconnected").map((p) => p.name || "?");
+    const names = ports(this.access.inputs).filter((p) => p.state !== "disconnected").map((p) => p.name || "?");
     return names.length ? ` (MIDI: ${names.join(", ")})` : " (MIDI: none)";
   }
 
@@ -660,7 +664,7 @@ const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textCont
 const say = (txt) => { lastKey = null; $("status").textContent = txt; };
 const log = (t) => { $("log").textContent += t + "\n"; };
 let image = null;
-const meta = {"version": "3.5", "product": "FM-1_935", "pkg": "../../firmware/sloopdx-3.5.fwsc", "sha256": "12c0413521b816c0da9f23202d5766631301a7adef8ee8051f735abf8c318641"};
+const meta = {"version": "4.0", "product": "FM-1_940", "pkg": "../../firmware/sloopdx-4.0.fwsc", "sha256": "5d330286fa42583db5d2e4eceb246dbcbcff6c8e716398f4c98ed87ab56c6c79"};
 
 let writing = false, stock = null;
 const lockAll = (on) => {

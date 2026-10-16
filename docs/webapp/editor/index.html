@@ -268,7 +268,7 @@
      no cookies, IPs anonymised on the server, Do Not Track respected -->
 <script>
   var _paq = window._paq = window._paq || [];
-  var _mtmSite = {"zp12.designburgapps.com": "3", "fm1.designburgapps.com": "4", "designburgapps.com": "5",
+  var _mtmSite = {"zp12.designburgapps.com": "3", "thefirmwarehub.com": "4", "fm1.designburgapps.com": "4", "designburgapps.com": "5",
                   "www.designburgapps.com": "5"}[location.hostname] || "1";
   _paq.push(['setDomains', [location.hostname]]);
   _paq.push(['disableCookies']);
@@ -1421,7 +1421,8 @@ function b64dec(s) {
 /* object ids (firmware editor.c ED_BK_IDS): 0 the working project, 1 the settings, 2..5 projects A..D,
    6..7 the user preset banks, 8 the DX7 user bank (sloopDX; 4096 voice bytes, 0 = none). SLOOP 2.3 has its
    USR1..3 slots as 32..34 instead: sloopDX has nowhere to put them, so a SLOOP backup restores without them */
-const BK = { FORMAT: "sloop-backup", VERSION: 1, RESTORE: [6, 7, 8, 9, 2, 3, 4, 5, 0, 1], SKIP: [32, 33, 34] };   /* 9: MY KIT (2.1) */
+const BK = { FORMAT: "sloop-backup", VERSION: 1, RESTORE: [6, 7, 8, 9, 2, 3, 4, 5, 0, 1, 10, 11], SKIP: [32, 33, 34] };   /* 9: MY KIT (2.1);
+   10 the MIDI part (MIDI LEARN, GLO > MIDI), 11 your theme (4.0, as SLOOP 2.6 / 2.7: after the settings) */
 class BackupError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
 /* read everything; progress(done, total bytes) */
 async function backupCapture(rq, info, progress = () => {}) {
@@ -1552,7 +1553,8 @@ const mixer = {
          watchMs: how long WATCH lasts after the last request (3000), slots: user bank size (32)} */
 function makeMockDevice(opt = {}) {
   const NONOFF = ["OFF", "ON"], NDIV = ["1/4", "1/8", "1/16", "1/32", "8T", "16T"], NGO = ["--", "GO"], NDASH = ["--"];
-  const NSDIV = [...NDIV, "1/2", "1BAR", "2BAR"], NDLY = [...NDIV, "1/8D", "1/16D"];   /* (sloopDX 3.3, from SLOOP 2.4) */
+  const NSDIV = [...NDIV, "1/2", "1BAR", "2BAR"], NDLY = [...NDIV, "1/8D", "1/16D", "1/4D"];   /* (sloopDX 3.3, from SLOOP 2.4; 4.0: 1/4D) */
+  const NMCH = ["OFF", ...Array.from({ length: 16 }, (_, i) => String(i + 1))];   /* (4.0) GLO > MIDI: a channel */
   const D = (label, fmt, min, max, def, names = null, unit = "") => ({ label, fmt, min, max, def, names, unit });
   const E = (label, names, def) => D(label, F.ENUM, 0, names.length - 1, def, names);
   const TP = [
@@ -1561,7 +1563,7 @@ function makeMockDevice(opt = {}) {
     D("FLT", F.BIPCT, -64, 63, 0), D("PIT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("FX", F.BIPCT, -64, 63, 0),
     D("RATE", F.LFOHZ, 0, 127, 60), E("WAVE", ["SIN", "TRI", "SAW", "SQR", "S&H"], 0), D("PHS", F.INT, 0, 127, 0), D("FADE", F.TIME, 0, 127, 0),
     D("PIT", F.BIPCT, -64, 63, 0), D("FLT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("AMP", F.PCT, 0, 127, 0),
-    E("MODE", ["OFF", "UP", "DN", "UPDN", "RND", "ORD", "OMNI", "FLW"], 0), E("RATE", NDIV, 2), D("OCT", F.INT, 1, 4, 1), D("GATE", F.PCT, 1, 127, 64),
+    E("MODE", ["OFF", "UP", "DN", "UPDN", "RND", "ORD", "OMNI", "FLW", "REPEAT", "DNUP", "UP+8", "CONV", "DIVG", "PINKY", "THUMB", "WALK", "CHORD"], 0), E("RATE", NDIV, 2), D("OCT", F.INT, 1, 4, 1), D("GATE", F.PCT, 1, 127, 64),
     D("SWG", F.SWING, 0, 100, 0), D("PROB", F.PCT, 0, 127, 127), E("HOLD", NONOFF, 0), E("ORD", ["NOTE", "PLAY"], 0),
     D("ROOT", F.NOTE, 0, 11, 0), E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 0), E("QNT", ["OFF", "SNAP", "WHITE"], 0), D("TRN", F.SEMI, -24, 24, 0),
     D("LEN", F.STEPS, 1, 128, 16), E("DIV", NSDIV, 2), D("SWG", F.SWING, 0, 100, 0), D("GATE", F.PCT, 1, 127, 64),
@@ -1571,12 +1573,17 @@ function makeMockDevice(opt = {}) {
     E("SLCR", ["OFF", "GATE", "STUT"], 0), D("PAT", F.INT, 1, 16, 1), E("RATE", ["1/8", "1/16", "1/32", "8T", "16T", "32T"], 1), D("DEPTH", F.PCT, 0, 127, 127),
     E("CHORD", ["OFF", "TRIAD", "7TH", "9TH", "SUS4", "POWER"], 0),
     D("TONE", F.BIPCT, -64, 63, 0), E("TYPE", ["SOFT", "HARD", "FUZZ", "CRUSH"], 0), D("MIX", F.PCT, 0, 127, 127),
+    /* 4.0 (SLOOP 2.6): the INSERT, ENV SYNC, LFO 2 */
+    E("INSRT", ["OFF", "SOFT", "HARD", "FOLD", "FUZZ", "CRUSH", "PHASR", "FLANG", "CHOR"], 0),
+    D("INS A", F.PCT, 0, 127, 64), D("INS B", F.PCT, 0, 127, 96), D("INS C", F.PCT, 0, 127, 96), D("MIX", F.PCT, 0, 127, 127),
+    E("ESYNC", NONOFF, 0),
+    E("SYNC", ["OFF", "4BAR", "2BAR", "1BAR", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0), E("TRIG", ["NOTE", "FREE"], 0), E("POL", ["BI", "UNI"], 0),
   ];
   const GP = [
     D("BPM", F.BPM, 40, 240, 90), D("SWING", F.SWING, 0, 100, 0), E("CLICK", ["OFF", "REC", "ON"], 0), D("TUNE", F.INT, -50, 50, 0),
     E("TIME", NDLY, 1), D("FDBK", F.PCT, 0, 120, 60), D("COLR", F.PCT, 0, 127, 70), D("MIX", F.PCT, 0, 127, 90),
     D("SIZE", F.PCT, 0, 127, 90), D("DAMP", F.PCT, 0, 127, 60), D("RATE", F.LFOHZ, 0, 127, 40), D("DEPTH", F.PCT, 0, 127, 60),
-    E("MIDI", ["KEYS", "SEQ"], 0), E("SYNC", ["INT", "USB", "TRS"], 0), E("IN", ["NOTES", "CLOCK"], 0), D("CPU", F.INT, 0, 0, 0),
+    E("OUT", ["KEYS", "SEQ"], 0), E("SYNC", ["INT", "USB", "TRS"], 0), E("IN", ["NOTES", "CLOCK", ...NMCH.slice(1).map((c) => "CH " + c)], 0), D("CPU", F.INT, 0, 0, 0),
     D("SLOT", F.INT, 1, 4, 1), E("NAME", NDASH, 0), E("LOAD", NGO, 0), E("SAVE", NGO, 0),
     E("ENG", ["DX7"], 0), E("SET", NGO, 0),
     E("CLRSQ", NGO, 0), E("INIT", NGO, 0),
@@ -1585,6 +1592,11 @@ function makeMockDevice(opt = {}) {
     E("ROLL", ["1/8", "1/16", "1/32", "32T", "1/64"], 1), E("NEW", NGO, 0),
     D("MIX", F.PCT, 0, 127, 127), D("PRE", F.INT, 0, 90, 0, null, "ms"),
     D("DLY", F.INT, 0, 127, 0),
+    /* 4.0 (SLOOP 2.6 / 2.7): GLO > MIDI, MIDI 2, MIDI 3, TEXTURE */
+    E("CH1", NMCH, 1), E("CH2", NMCH, 2), E("CH3", NMCH, 3), E("OTHER", ["SEL", "OFF"], 0),
+    E("SRC", ["OFF", "VINYL", "TAPE", "RAIN", "WIND", "RADIO", "ROOM"], 0), D("LEVEL", F.PCT, 0, 127, 64), D("TONE", F.FILT, -64, 63, 0),
+    D("MOVE", F.PCT, 0, 127, 40), E("RATE", ["1BAR", "2BAR", "4BAR", "8BAR", "16BAR"], 2), E("WHEN", ["PLAY", "ALWAYS"], 0), E("DUCK", NONOFF, 0),
+    D("BEND", F.SEMI, 1, 12, 2), E("FX CH", NMCH, 0), E("DR MAP", ["GM", "1-16"], 0), E("REMOTE", NMCH, 0), E("CLOCK", ["OFF", "OUT"], 0),
   ];
   /* the drum track's P_E0: its kit (drums.c DRUM_KIT_NAMES: four treatments of the FM kit and USER, the
      first 16 voices of the DX7 user bank) */
@@ -1656,7 +1668,7 @@ function makeMockDevice(opt = {}) {
     [[60, 60, 61, 61, 62, 0, 63, 63, 64, 65, 65, 0, 66, 66, 66, 67], [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]],
     [[60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75], [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]],
   ];
-  const P_COUNT = 61, G_COUNT = 34, NSTEP = 128, P_E0 = 53, G_ENGSEL = 20, P_SLCR = 45, P_CHORD = 49, P_SLEN = 29;
+  const P_COUNT = 70, G_COUNT = 51, NSTEP = 128, P_E0 = 62, G_ENGSEL = 20, P_SLCR = 45, P_CHORD = 49, P_SLEN = 29;
   /* sloopDX 2.2: one pool of 256 steps, a track up to 128 of them (core.h slen_room) */
   const slenRoom = (ti) => Math.max(1, Math.min(NSTEP, 256 - st.tracks.reduce((n, t, i) => n + (i === ti ? 0 : Math.max(1, t.p[P_SLEN])), 0)));
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1836,7 +1848,7 @@ function makeMockDevice(opt = {}) {
         s(opt.legacy ? "FELUCCA 0.4 BETA (MOCK)" : opt.v3 ? "FELUCCA 0.8 (MOCK)" : "FELUCCA sloopDX 3.4 (MOCK)"); b(ENG.length); b(P_COUNT); b(G_COUNT); b(NSTEP & 127); b(P_E0);
         ENG.forEach((e) => s(e.name));
         if (!opt.legacy) b(NTRK);
-        if (v5) b(opt.noBackup ? 5 : opt.sloop23 ? 6 : opt.proto7 ? 7 : opt.proto8 ? 8 : opt.proto9 ? 9 : opt.proto10 ? 10 : 11);   /* 6 backup (SLOOP 2.3), 7 the DX7 bank, 8 voice editing, 9 8 banks, 10 MY KIT, 11 128 steps */
+        if (v5) b(opt.noBackup ? 5 : opt.sloop23 ? 6 : opt.proto7 ? 7 : opt.proto8 ? 8 : opt.proto9 ? 9 : opt.proto10 ? 10 : 12);   /* 6 backup (SLOOP 2.3), 7 the DX7 bank, 8 voice editing, 9 8 banks, 10 MY KIT, 11 128 steps, 12 4.0 (MIDI part, theme) */
         break;
       case CMD.GET: case CMD.SET: {
         if (a.length < 2) return null;
@@ -2236,7 +2248,8 @@ const GLYPH = {
 /* section headings (LAYOUT titles) and page titles */
 const HEAD_IC = { ENV: "function_env_adsr_exp", LFO: "waveform_sine", EDIT: "ui_knob", VOICE: "symbol_keyboard",
   FX: "symbol_effector", SEL: "symbol_tuning", ARP: "control_arrow_up_down", "SEQ PATTERN": "symbol_grid",
-  GLOBAL: "symbol_cog", MASTER: "ui_slider_vertical", DRUMS: "symbol_drum", INSTRUMENT: "symbol_keyboard" };
+  GLOBAL: "symbol_cog", MASTER: "ui_slider_vertical", DRUMS: "symbol_drum", INSTRUMENT: "symbol_keyboard",
+  MIDI: "symbol_keyboard", TEXTURE: "waveform_sine" };
 const PAGE_IC = { FLT: "function_filter_lpf_peak", FILT: "function_filter_lpf_peak", DLY: "symbol_echo", "REV/CHO": "symbol_spring", DELAY: "symbol_echo", REVERB: "symbol_spring", SLICER: "symbol_grid" };
 /* WAVE / WAVE2 choices; phase-distortion shapes without a close glyph (SPLS, RSAW, RTRI, RTRP) get none */
 const WAVE_IC = { SIN: "waveform_sine", TRI: "waveform_triangle_ac", SAW: "waveform_sawtooth_ac", SQR: "waveform_square",
@@ -2525,18 +2538,21 @@ function selfLoad() {
 }
 const stepEdit = new Map(); /* index -> time of the last edit */
 
-/* parameter ids (firmware/src/core.h); used only when P_COUNT / G_COUNT match: sloopDX 2.7 (the effect pages:
-   one per effect, a page entry [scope, id] for a global on a track page), or 2.2 .. 2.6 */
-const EXPECTS = [{ pcount: 61, gcount: 34, pe0: 53, fx: 7 }, { pcount: 58, gcount: 32, pe0: 50, fx: 6 }];
+/* parameter ids (firmware/src/core.h); used only when P_COUNT / G_COUNT match: sloopDX 4.0 (SLOOP 2.6 / 2.7's INSERT,
+   ENV SYNC, LFO 2; the MIDI and TEXTURE pages), 2.7 .. 3.x (the effect pages: one per effect, a page entry [scope, id]
+   for a global on a track page), or 2.2 .. 2.6 */
+const EXPECTS = [{ pcount: 70, gcount: 51, pe0: 62, fx: 8 }, { pcount: 61, gcount: 34, pe0: 53, fx: 7 }, { pcount: 58, gcount: 32, pe0: 50, fx: 6 }];
 const FX_PAGES = {
+  8: [["DIST", 0, [33, 50, 51, 52]], ["CHORUS", 0, [34, [1, 10], [1, 11], [1, 32]]], ["DELAY", 0, [35, [1, 4], [1, 5], [1, 7], [1, 6]]],
+    ["REVERB", 0, [36, [1, 8], [1, 9], [1, 33]]], ["SLICER", 0, [45, 46, 47, 48]], ["INSERT", 0, [53, 54, 55, 56, 57]]],
   7: [["DIST", 0, [33, 50, 51, 52]], ["CHORUS", 0, [34, [1, 10], [1, 11], [1, 32]]], ["DELAY", 0, [35, [1, 4], [1, 5], [1, 7], [1, 6]]],
     ["REVERB", 0, [36, [1, 8], [1, 9], [1, 33]]], ["SLICER", 0, [45, 46, 47, 48]]],
   6: [["FX", 0, [33, 34, 35, 36]], ["SLICER", 0, [45, 46, 47, 48]], ["DLY", 1, [4, 5, 6, 7]], ["REV/CHO", 1, [8, 9, 10, 11]]],
 };
 const P = { LEVEL: 0, SLEN: 29, CHORD: 49 };
 const LAYOUT = (pe0, fx) => [
-  { t: "ENV", pages: [["ENV", 0, [1, 2, 3, 4]], ["ENV DEST", 0, [5, 6, 7, 8]]] },
-  { t: "LFO", pages: [["LFO", 0, [9, 10, 11, 12]], ["LFO DEST", 0, [13, 14, 15, 16]]] },
+  { t: "ENV", pages: [["ENV", 0, [1, 2, 3, 4]], ["ENV DEST", 0, fx >= 8 ? [5, 6, 7, 58] : [5, 6, 7, 8]]] },
+  { t: "LFO", pages: [["LFO", 0, [9, 10, 11, 12]], ...(fx >= 8 ? [["LFO 2", 0, [59, 60, 61]]] : []), ["LFO DEST", 0, [13, 14, 15, 16]]] },
   { t: "EDIT", engine: true, pages: [["EDIT 1", 0, [pe0, pe0 + 1, pe0 + 2, pe0 + 3]], ["EDIT 2", 0, [pe0 + 4, pe0 + 5, pe0 + 6, pe0 + 7]]] },
   { t: "VOICE", pages: [["LEVEL", 0, [0]], ["VOICE", 0, [37, 38, 41, 42]], ["VOICE 2", 0, [43, 44, 39, 40]]] },
   { t: "FX", pages: FX_PAGES[fx] },
@@ -2546,6 +2562,10 @@ const LAYOUT = (pe0, fx) => [
   { t: "GLOBAL", tab: "setgroups", pages: [["GLOBAL", 1, [0, 1, 2, 3]]] },
   { t: "MASTER", tab: "setgroups", pages: [["MASTER", 1, [27, 28, 29, 30]]] },
   { t: "DRUMS", tab: "setgroups", pages: [["DRUMS", 1, [24, 25, 26, 34]]] },
+  ...(fx >= 8 ? [   /* 4.0 (SLOOP 2.6 / 2.7): every MIDI setting (the FM-1's, not the project's), the bed under the mix */
+    { t: "MIDI", tab: "setgroups", pages: [["MIDI", 1, [35, 36, 37, 24]], ["MIDI 2", 1, [14, 38, 12, 46]], ["MIDI 3", 1, [47, 48, 49, 50]]] },
+    { t: "TEXTURE", tab: "setgroups", pages: [["TEXTURE", 1, [39, 40, 41, 42]], ["TEXTURE 2", 1, [43, 44, 45]]] },
+  ] : []),
 ];
 /* globals that are actions or placeholders on the device: buttons instead, or hidden */
 const G_SKIP = new Set(["SLOT", "NAME", "LOAD", "SAVE", "ENG", "SET", "CLRSQ", "INIT", "MIDI", "SYNC", "ROUT", "CPU", "NEW"]);
