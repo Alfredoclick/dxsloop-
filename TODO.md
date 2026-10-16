@@ -53,6 +53,9 @@ Drei-Wege-Merge mit SLOOP 2.5 (`fa9ce57`) als Basis, upstream `ba54ba5` (v2.7). 
 - [ ] **Am Gerät:** ABOUT „2 CORES“ und die Spannungen, Konsole `lowram 1`, `cpu1_timeouts 0`; CPU mit 3 DX7-Parts
       (Akkorde) + Drums, 2ND CORE ON gegen OFF; MIDI-Kanäle, Sustain, Bend, LEARN, FX CH, REMOTE, CLOCK OUT mit einer DAW;
       neue Arp-Modi, KBD HOLD; Schrift (Terminus Bold) auf den DX7-Seiten lesbar?
+- [ ] 4.0 läuft auf dem FM-1 (2026-10-16 installiert, FM-1_940; Lasttest 8 DX7-Stimmen + Drums über USB-Audio ohne
+      Aussetzer). Sven hört ein Rauschen am Ende von Phrasen; DUST 0, TEXTURE aus, USB-Signal digital still: wohl analog.
+      Bei Bedarf: 2ND CORE OFF + Neustart vergleichen (Kern 1 schlafen lassen statt Warteschleife?), sonst die Spannungen.
 - [ ] Nicht übernommen, eigener Entwurf nötig: REC QUANT off (braucht SLOOPs Mikro-Timing / Nudge pro Step, 2.4),
       Parameter-Locks und Fills.
 - [ ] Cheat-Sheet-PDFs neu drucken (HTML für 4.0 angepasst: Menü-Abschnitte, MIDI-Seiten, 27 Punch-ins); in dieser Sitzung
