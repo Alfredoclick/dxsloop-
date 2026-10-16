@@ -102,6 +102,8 @@ static int track_ok_v2(const project_t *q, const proj_trk_v2_t *o, uint32_t t)
           n->p[P_SLDEPTH] == TP[P_SLDEPTH].def && n->p[P_CHORD] == 0;
     for (k = 0; k < 8u; k++)
         ok &= n->p[P_E0 + k] == oldv(t, 45u + k);
+    for (k = P_ITYPE; k < P_E0; k++)
+        ok &= n->p[k] == TP[k].def;
     return ok;
 }
 
@@ -121,6 +123,7 @@ int main(void)
     static project_v2_t v2;
     static project_v1_t v1;
     static project_t q, q2;
+    static project_v5_t v5;
     static union {
         project_t v4;
         project_v3_t v3;
@@ -130,9 +133,10 @@ int main(void)
     uint32_t i, t;
     int bad = 0, ok;
 
-    bad += check("layout: P_CHORD after P_SLDEPTH, then the DIST page's three before P_E0 (53); format 6 = format 3's + 1",
-                 P_SLDEPTH + 1 == P_CHORD && P_DMIX + 1 == P_E0 && P_E0 == 53 && PROJ_NP_V6 == PROJ_NP_V3 + 1u &&
-                 P_COUNT == PROJ_NP_V6 + 3u && PROJ_NG == PROJ_NG_V6 + 2u && G_COUNT == PROJ_NG + 1u);
+    bad += check("layout: P_CHORD after P_SLDEPTH, the DIST page's three, 4.0's nine before P_E0 (62); format 6 = 3's + 1",
+                 P_SLDEPTH + 1 == P_CHORD && P_DMIX + 1 == P_ITYPE && P_LPOL + 1 == P_E0 && P_E0 == 62 &&
+                 PROJ_NP_V6 == PROJ_NP_V3 + 1u && PROJ_NP_V7 == PROJ_NP_V6 + 3u && P_COUNT == PROJ_NP_V7 + 9u &&
+                 PROJ_NG == PROJ_NG_V6 + 2u && PROJ_NG == G_DRDLY && G_COUNT == G_CLKOUT + 1u);
     bad += check("format 5 fits one flash object; 4 slots fit .noinit", sizeof(project_t) <= 4096u - 256u &&
                  4u * sizeof(project_t) < 0x3D50u - 1024u);
 
@@ -337,6 +341,51 @@ int main(void)
         bad += check("format 6 -> 7: parameters mapped by count, the new ones at their defaults", ok);
     }
 
+    {   /* format 7 (sloopDX 2.7 .. 3.x) -> 8 (4.0): by count (E0..E7 up by nine), the INSERT, ENV SYNC and LFO 2 at their
+         * defaults, TEXTURE off; everything of format 7 as it was. And format 8 keeps the new ones and TEXTURE */
+        static project_t q8;
+        static project_v7_t o7;
+        uint32_t k;
+        host_tracks_init();
+        trk[0].p[P_E0 + 3] = 33, trk[1].p[P_DTYPE] = 3, trk[2].p[P_DMIX] = 50, song.g[G_RPRE] = 40;
+        trk[0].p[P_ITYPE] = 5, trk[1].p[P_LSYNC] = 4, trk[2].p[P_ESYNC] = 1;
+        song.g[G_TXSRC] = 3, song.g[G_TXTONE] = -20, song.g[G_TXDUCK] = 1;
+        dext.m[4][DM_TUNE] = 7;
+        proj_capture(&q8);
+        memset(&o7, 0, sizeof o7);
+        o7.magic = PROJ_MAGIC_V7, o7.size = sizeof o7, o7.sel = q8.sel, o7.dxv = q8.dxv, o7.drdly = q8.drdly;
+        memcpy(o7.g, q8.g, sizeof o7.g);
+        for (t = 0; t < NTRK; t++) {
+            for (k = 0; k < PROJ_NP_V7 - 8u; k++)
+                o7.t[t].p[k] = q8.t[t].p[k];
+            for (k = 0; k < 8u; k++)
+                o7.t[t].p[PROJ_NP_V7 - 8u + k] = q8.t[t].p[P_E0 + k];
+            o7.t[t].engine = q8.t[t].engine, o7.t[t].preset = q8.t[t].preset, o7.t[t].nst = q8.t[t].nst;
+        }
+        memcpy(o7.pool, q8.pool, sizeof o7.pool);
+        memcpy(&o7.dext, &q8.dext, sizeof o7.dext);
+        o7.sum = proj_hash(&o7, sizeof o7 - 4u);
+        ok = proj_import(&q, &o7, (int)sizeof o7) && proj_ok(&q) && q.t[0].p[P_E0 + 3] == 33 && q.t[1].p[P_DTYPE] == 3 &&
+             q.t[2].p[P_DMIX] == 50 && q.g[G_RPRE] == 40 && q.t[0].p[P_ITYPE] == TP[P_ITYPE].def &&
+             q.t[1].p[P_LSYNC] == TP[P_LSYNC].def && q.t[2].p[P_ESYNC] == TP[P_ESYNC].def &&
+             q.tx[0] == GP[G_TXSRC].def && !memcmp(q.pool, q8.pool, sizeof q.pool) && q.dext.m[4][DM_TUNE] == 7;
+        o7.sum ^= 1u;
+        ok &= !proj_import(&q, &o7, (int)sizeof o7);
+        bad += check("format 7 -> 8: parameters mapped by count, INSERT / ESYNC / LFO 2 at their defaults, TEXTURE off", ok);
+        host_tracks_init();
+        proj_apply(&q8, 1);
+        if (!(trk[0].p[P_ITYPE] == 5 && trk[1].p[P_LSYNC] == 4 && trk[2].p[P_ESYNC] == 1 && song.g[G_TXSRC] == 3 &&
+              song.g[G_TXTONE] == -20 && song.g[G_TXDUCK] == 1))
+            printf("  format 8: ITYPE %d LSYNC %d ESYNC %d TXSRC %d TONE %d DUCK %d, size %u\n", trk[0].p[P_ITYPE], trk[1].p[P_LSYNC],
+                   trk[2].p[P_ESYNC], song.g[G_TXSRC], song.g[G_TXTONE], song.g[G_TXDUCK], (unsigned)sizeof q8);
+        ok = trk[0].p[P_ITYPE] == 5 && trk[1].p[P_LSYNC] == 4 && trk[2].p[P_ESYNC] == 1 && song.g[G_TXSRC] == 3 &&
+             song.g[G_TXTONE] == -20 && song.g[G_TXDUCK] == 1 && trk[0].p[P_E0 + 3] == 33 && q8.magic == PROJ_MAGIC &&
+             sizeof q8 <= 4096u - 256u;
+        bad += check("format 8: the INSERT, ENV SYNC, LFO 2 and TEXTURE (a section's too) saved and back", ok);
+        memset(&dext, 0, sizeof dext);
+        song.g[G_RPRE] = 0, song.g[G_TXSRC] = 0, song.g[G_TXTONE] = 0, song.g[G_TXDUCK] = 0;
+    }
+
     {   /* format 6: one pool of 256 steps. A track up to 128, the others what is left (slen_room / slen_set);
          * capture stores LEN steps each, in track order; apply puts them back and empties the rest; a format 5
          * project (64 + 64 + 64 + 64) fills the pool exactly */
@@ -364,6 +413,9 @@ int main(void)
         bad += check("format 6: a 256-step pool, a track up to 128; LEN steps stored in track order", ok);
     }
 
+    q2 = q;
+    bad += check("2.6 SAVE > PROJECT > ERASE: an object of no bytes is no project (an empty slot, older SLOOP too)",
+                 !proj_import(&q2, &q, 0));
     printf("%s\n", bad ? "PROJECT FORMAT TEST FAILED" : "project format test passed");
     return bad != 0;
 }

@@ -45,7 +45,18 @@ static struct {
     int16_t pgl[NDRUM], pgr[NDRUM];   /* its pan, Q12 */
     int16_t send[NDRUM];         /* its reverb send, Q14 (16384 = the drum REV as it is) */
     uint8_t bus_tail;            /* blocks the bus still runs after the last voice (DRIVE / COMP states settle) */
+    int32_t glv, ggl, ggr;       /* (4.0, SLOOP 2.7) LEVEL and PAN as last mixed: a change glides (~3 ms, mix_glide) */
+    uint8_t gon;
 } drums;
+
+/* (4.0, SLOOP 2.7) LEVEL and PAN glide: a knob's detent (or a new sound's trim) moves a quarter of the way each block of
+ * CTL samples (0.73 ms), ~3 ms in all, instead of a step a detent (after JIANT FM 0.6.8, github.com/juanjiant-bit/JIANT:
+ * "LEVEL and PAN glide (~3 ms) instead of stepping at each knob move"). The last few units: at once */
+static int32_t mix_glide(int32_t from, int32_t to)
+{
+    int32_t d = to - from;
+    return d <= 8 && d >= -8 ? to : from + d / 4;
+}
 
 /* ------------------------------------------------------------ lanes --- */
 /* The drum track's 16 sounds, one per white key, F3 (kick) .. G5 (cowbell): kicks, snare and clap,
@@ -691,10 +702,19 @@ static void drums_bus(int32_t *l, int32_t *r, int32_t *sb, uint32_t n)
 static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly, int32_t *mono, uint32_t n)
 {
     uint32_t k, i, any = 0;
-    int32_t lvl = song.g[G_DRLVL] * 200, send = song.g[G_DRREV] * 258, dsend = song.g[G_DRDLY] * 129, pk = drums.peak;   /* (200: -0 dB at LVL 100;
+    int32_t lvl = song.g[G_DRLVL] * 200, send = send_thr(song.g[G_DRREV] * 258, thr_rev),   /* (200: -0 dB at LVL 100;
                                                                                            * 1.9 had 142, -3 dB) */
+            dsend = send_thr(song.g[G_DRDLY] * 129, thr_dly), pk = drums.peak;   /* (4.0: the THROWs, SLOOP 2.6) */
     int32_t pan = trk[TRK_DRUM].p[P_PAN], gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
-    int32_t buf[DX_N], bl[DX_N], br[DX_N], bs[DX_N];
+    static int32_t buf[DX_N] __attribute__((section(".lowram")));   /* (not on the stack: core 1's is small; */
+    static int32_t bl[DX_N] __attribute__((section(".lowram")));    /* the drums render on one core a block) */
+    static int32_t br[DX_N] __attribute__((section(".lowram")));
+    static int32_t bs[DX_N] __attribute__((section(".lowram")));
+    if (!drums.gon)                                 /* (4.0, SLOOP 2.7) LEVEL and PAN glide, block by block (mix_glide) */
+        drums.glv = lvl, drums.ggl = gl, drums.ggr = gr, drums.gon = 1;
+    lvl = drums.glv = mix_glide(drums.glv, lvl);
+    gl = drums.ggl = mix_glide(drums.ggl, gl);
+    gr = drums.ggr = mix_glide(drums.ggr, gr);
     for (i = 0; i < n && drums.tail; i++) {         /* declick tail, ~0.4 ms */
         if (mono) {
             mono[i] += drums.tail;

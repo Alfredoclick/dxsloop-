@@ -160,7 +160,7 @@ int main(void)
     for (i = 0; i < 53u; i++)
         r.p[i] = (int16_t)(2000 + i);
     up_params(&r, v, def);
-    ok = P_SLCR == 45 && P_SLDEPTH + 1 == P_CHORD && P_CHORD == 49 && P_E0 == 53;
+    ok = P_SLCR == 45 && P_SLDEPTH + 1 == P_CHORD && P_CHORD == 49 && P_DMIX == 52 && P_ITYPE == 53 && P_E0 == 62;
     for (i = 0; i < 45u; i++)
         ok &= v[i] == (int16_t)(2000 + i);
     for (i = P_SLCR; i < P_E0; i++)
@@ -168,6 +168,19 @@ int main(void)
     for (i = 0; i < 8u; i++)
         ok &= v[P_E0 + i] == (int16_t)(2000 + 45 + i);
     bad += check("old record (np 53): SLICER, CHORD and DIST page defaults, E0..E7 kept", ok);
+    /* a record of sloopDX 2.7 .. 3.x (P_COUNT 61, P_E0 53): 4.0's nine (INSERT, ENV SYNC, LFO 2) take their defaults */
+    r.np = 61;
+    for (i = 0; i < 61u; i++)
+        r.p[i] = (int16_t)(4000 + i);
+    up_params(&r, v, def);
+    ok = 1;
+    for (i = 0; i < P_ITYPE; i++)
+        ok &= v[i] == (int16_t)(4000 + i);
+    for (i = P_ITYPE; i < P_E0; i++)
+        ok &= v[i] == def[i];
+    for (i = 0; i < 8u; i++)
+        ok &= v[P_E0 + i] == (int16_t)(4000 + 53 + i);
+    bad += check("3.x record (np 61): the 4.0 parameters (INSERT, ESYNC, LFO 2) default, the rest and E0..E7 kept", ok);
     /* a record of SLOOP 1.0 (P_COUNT 57, P_E0 49): CHORD (SLOOP 2.0) takes its default */
     r.np = 57;
     for (i = 0; i < 57u; i++)

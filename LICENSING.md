@@ -10,6 +10,8 @@ the CC0 sample sets of SLOOP are gone with the sample engines.
 
 Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments (Felucca)
 Copyright (C) 2026 isod89 (SLOOP)
+Copyright (C) 2026 Andre Rezemini (the second core: `firmware/src/cpu1.c`, the render split, `tests/cpu1_*`, `tests/mix_split_test.c`)
+Copyright (C) 2026 Charles Vestal (X0X: `firmware/hal/fm1_cpu1.h`, `firmware/hal/fm1_cpu1.S`, after Kerem Kilic's Melodee)
 sloopDX (C) 2026 Sven Trogus
 
 ## What is code (GPL-3.0-only)
@@ -45,7 +47,7 @@ assets, is entirely governed by the GPL.
 | What | Licence | Where |
 | --- | --- | --- |
 | DX7 core: the msfa engine of Dexed, Copyright 2012 Google Inc., 2016-2025 Pascal Gauthier, ported to integer C (the port and its SLOOP integration are GPL-3.0-only, Copyright (C) 2026 Sven Trogus); the tables are computed on the host with msfa's expressions | Apache-2.0 (msfa) | `firmware/src/dx7_core.c` (`SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only`), `tools/gen_dx7_tables.c` → `firmware/src/dx7_tables.h`; <https://github.com/asb2m10/dexed> |
-| Terminus font 8x16 (ter-u16n) | SIL OFL 1.1 | `assets/fonts/ter-u16n.bdf`, `assets/fonts/Terminus-LICENSE.txt` |
+| Terminus font 8x16 (ter-u16n, and Terminus Bold ter-u16b on the screen since 4.0) | SIL OFL 1.1 | `assets/fonts/ter-u16n.bdf`, `assets/fonts/ter-u16b.bdf`, `assets/fonts/Terminus-LICENSE.txt` |
 | Fukiai icon font (Hügelton Instruments), web editor only | MIT | `web/fukiai.ttf`, `web/FUKIAI-LICENSE.txt` |
 | JieLi AC79 SDK: `uboot.boot`, `cfg_tool.bin`, `eq_cfg_hw.bin` are read from your SDK checkout at build time and placed in the package; no SDK files are in this tree | Apache-2.0 | <https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK> |
 

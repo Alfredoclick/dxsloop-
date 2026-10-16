@@ -11,21 +11,15 @@ static uint8_t dm_pg, kit_save_arm;                 /* LANE: the macro page (0..
 static uint32_t lane_t0, kit_save_ms;               /* when LANE opened; when SAVE was pressed once */
 static void trk_short_name(uint32_t c, char *b);
 static int ukit_store(void);                        /* project.c: MY KIT to flash, 0 ok */
-static int on_drum_page(void) { return !ui.home && cur_page()->scope == SC_DRUM; }
+UI_SMALL static int on_drum_page(void) { return !ui.home && cur_page()->scope == SC_DRUM; }
 
 /* ---------------------------------------------------------------- style --- */
-#define TE_G1 RGB(40, 36, 37)            /* tiles (the DX7's warm panel greys) */
-#define TE_G2 RGB(70, 64, 65)            /* empty steps, dial tracks */
-#define TE_G3 RGB(140, 132, 128)         /* labels */
-#define TE_G4 RGB(206, 200, 194)         /* secondary text */
+/* TE_G1 .. TE_G4: the greys (tiles, empty steps, labels, secondary text), TE_COL, TE_MID, TE_DIM: the tracks' colours,
+ * gfx.c (4.0, SLOOP 2.7: on a theme's background; a theme may set the tracks' colours) */
 #define TE_RED RGB(255, 44, 52)          /* recording, erasing */
-/* sloopDX: the DX7's panel colours, one per track: cyan, light blue, pink, and beige for the drums */
-static const uint16_t TE_COL[4] = {RGB(66, 245, 245), RGB(175, 217, 244), RGB(244, 192, 203), RGB(230, 209, 185)};
-static const uint16_t TE_MID[4] = {RGB(44, 163, 163), RGB(117, 145, 163), RGB(163, 128, 135), RGB(153, 139, 123)};
-static const uint16_t TE_DIM[4] = {RGB(22, 82, 82), RGB(58, 72, 81), RGB(81, 64, 68), RGB(77, 70, 62)};
 #define TE_DRUM TE_COL[3]
 
-static void te_disc(int32_t cx, int32_t cy, int32_t r, uint16_t c)     /* filled circle */
+UI_SMALL static void te_disc(int32_t cx, int32_t cy, int32_t r, uint16_t c)     /* filled circle */
 {
     int32_t y, x;
     for (y = -r; y <= r; y++)
@@ -34,7 +28,7 @@ static void te_disc(int32_t cx, int32_t cy, int32_t r, uint16_t c)     /* filled
                 cv_pset(cx + x, cy + y, c);
 }
 /* a dial: a 270-degree ring (lit up to the value), a pointer; ratio 0..1000, -1 = a plain ring */
-static void te_dial(int32_t cx, int32_t cy, int32_t r, int32_t ratio, uint16_t c, uint16_t dim)
+UI_SMALL static void te_dial(int32_t cx, int32_t cy, int32_t r, int32_t ratio, uint16_t c, uint16_t dim)
 {
     int32_t i, end = ratio < 0 ? 768 : ratio * 768 / 1000;
     for (i = 0; i <= 768; i += 8) {
@@ -51,7 +45,7 @@ static void te_dial(int32_t cx, int32_t cy, int32_t r, int32_t ratio, uint16_t c
         te_disc(cx, cy, 2, C_WHITE);
     }
 }
-static void te_play_icon(int32_t x, int32_t y, int playing)
+UI_SMALL static void te_play_icon(int32_t x, int32_t y, int playing)
 {
     int32_t i;
     if (playing)
@@ -60,23 +54,23 @@ static void te_play_icon(int32_t x, int32_t y, int playing)
     else
         cv_rect(x, y + 1, 12, 12, TE_G3);
 }
-static uint32_t studio_hash(uint32_t h, const char *p)
+UI_SMALL static uint32_t studio_hash(uint32_t h, const char *p)
 { while (*p) h = h * 31u + (uint8_t)*p++; return h; }
-static void te_lower(char *d, const char *s, uint32_t n)
+UI_SMALL static void te_lower(char *d, const char *s, uint32_t n)
 {
     uint32_t i;
     for (i = 0; i + 1u < n && s[i]; i++)
         d[i] = s[i] >= 'A' && s[i] <= 'Z' ? (char)(s[i] + 32) : s[i];
     d[i] = 0;
 }
-static void te_text_c(int32_t cx, int32_t y, const char *s, uint16_t c)   /* centred on cx */
+UI_SMALL static void te_text_c(int32_t cx, int32_t y, const char *s, uint16_t c)   /* centred on cx */
 {
     cv_text(cx - text_w(&FONT_S, s) / 2, y, &FONT_S, s, c);
 }
 
 /* the dial strip: KNOB 1..4, label + value under each (a dial with no label: an empty column); a
  * message replaces it */
-static void te_dials(int32_t y0, const char *const lab[4], const char *const val[4], const int32_t ratio[4],
+UI_SMALL static void te_dials(int32_t y0, const char *const lab[4], const char *const val[4], const int32_t ratio[4],
                      uint32_t sig, uint32_t *cache)
 {
     uint32_t k;
@@ -109,7 +103,7 @@ static void te_dials(int32_t y0, const char *const lab[4], const char *const val
     cv_blit(0, (uint32_t)y0 + 40u);
 }
 
-static void studio_open(uint32_t scope)
+UI_SMALL static void studio_open(uint32_t scope)
 {
     uint32_t i;
     if (scope == SC_SONG && rec_wait)
@@ -123,7 +117,7 @@ static void studio_open(uint32_t scope)
  * click (seq.c): playing, recording starts at once; stopped, REC arms and the first note
  * starts the loop (or, in an empty project, a free take that REC closes: seq.c ft_close).
  * REC again stops recording / cancels the arm (playback continues). */
-static void rec_toggle(void)
+UI_SMALL static void rec_toggle(void)
 {
     if (ft_owns_press())
         return;
@@ -145,7 +139,7 @@ static void rec_toggle(void)
 }
 
 /* the loop position of track t: "bar.beat" in its pattern (1.1 .. ) */
-static void loop_pos(const track_t *t, char *b)
+UI_SMALL static void loop_pos(const track_t *t, char *b)
 {
     uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), s = t->seq_idx % len, k;
     fmt_int(b, (int32_t)(s / 16u + 1u));
@@ -156,7 +150,7 @@ static void loop_pos(const track_t *t, char *b)
 }
 
 /* the header of the live screens: BPM, transport, the loop position, the beat lights, REC */
-static void te_header(const char *title, uint16_t tc, uint32_t *cache)
+UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache)
 {
     char b[12];
     uint32_t beat = clk_beat, k, playing = song.playing;
@@ -196,12 +190,12 @@ static void te_header(const char *title, uint16_t tc, uint32_t *cache)
 
 /* --------------------------------------------------------------- TRACKS --- */
 /* swing, MPC style: "62%" */
-static void swing_str(char *b, int32_t v)            /* 0 straight .. 100 the most (params.c F_SWING) */
+UI_SMALL static void swing_str(char *b, int32_t v)            /* 0 straight .. 100 the most (params.c F_SWING) */
 {
     fmt_int(b, clamp(v, 0, 100));
 }
 
-static void studio_tracks_draw(void)
+UI_SMALL static void studio_tracks_draw(void)
 {
     static uint32_t head, rows[NTRK], footer;
     uint32_t i, j;
@@ -291,14 +285,15 @@ static void studio_tracks_draw(void)
 
 /* ---------------------------------------------------------------- DRUMS --- */
 static const char *const LV_NAME[4] = {"norm", "ghost", "soft", "hard"};
-static uint16_t lvl_col(uint32_t lvl)                   /* a hit's colour by its level */
+UI_SMALL static uint32_t lvl_rank(uint32_t lvl);                 /* (below) ghost 0, soft 1, norm 2, hard 3 */
+UI_SMALL static uint16_t lvl_col(uint32_t lvl)                   /* a hit's colour by its level */
 {
     return lvl == LV_GHOST ? TE_DIM[3] : lvl == LV_SOFT ? TE_MID[3] : lvl == LV_HARD ? C_WHITE : TE_DRUM;
 }
 static uint16_t pad_lit[DRUM_LANES];                   /* pads and key LEDs: frames left lit */
 static uint8_t key_lit[27];                             /* menu NOTES, a synth track: frames its key stays lit */
 static uint8_t key_lit_trk = 0xFF;                      /* (the track key_lit is for) */
-static void pads_tick(void)                             /* once a frame: the hits since the last one */
+UI_SMALL static void pads_tick(void)                             /* once a frame: the hits since the last one */
 {
     uint32_t i, hits, n[NPART][4], k, w;
     fm1_irq_off();
@@ -337,8 +332,7 @@ static void pads_tick(void)                             /* once a frame: the hit
     }
 }
 
-static uint32_t lvl_rank(uint32_t lvl);                 /* (below) ghost 0, soft 1, norm 2, hard 3 */
-static void drum_screen_draw(void)
+UI_SMALL static void drum_screen_draw(void)
 {
     static uint32_t head, title_sig, body_sig, footer;
     uint32_t i, j, len = (uint32_t)clamp(TDRUM->p[P_SLEN], 1, NSTEP), kit = drum_kit(), sig, bank;
@@ -474,10 +468,10 @@ static void drum_screen_draw(void)
 
 /* the level order of the knobs: ghost < soft < norm < hard */
 static const uint8_t LV_UP[4] = {LV_GHOST, LV_SOFT, LV_NORM, LV_HARD};
-static uint32_t lvl_rank(uint32_t lvl) { return lvl == LV_GHOST ? 0u : lvl == LV_SOFT ? 1u : lvl == LV_NORM ? 2u : 3u; }
+UI_SMALL static uint32_t lvl_rank(uint32_t lvl) { return lvl == LV_GHOST ? 0u : lvl == LV_SOFT ? 1u : lvl == LV_NORM ? 2u : 3u; }
 
 /* the drum screen's buttons (tapped: ui_input.c layer_tap) */
-static void drum_seq_tap(void)                      /* GRID <-> KIT (LANE -> GRID) */
+UI_SMALL static void drum_seq_tap(void)                      /* GRID <-> KIT (LANE -> GRID) */
 {
     drum_page = drum_page ? 0u : 1u;
     ui.msg_t = 0;
@@ -514,7 +508,7 @@ static int drum_save_tap(void)                      /* 1: GRID, the song page op
     return 0;
 }
 
-static void drum_screen_input(uint32_t pressed, uint32_t home)
+UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t notes)
 {
     uint32_t k, b;
     int32_t s;
@@ -533,6 +527,14 @@ static void drum_screen_input(uint32_t pressed, uint32_t home)
     if ((s = panel_enc(EN_SELECT))) {
         song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + accel(EN_SELECT, s, 200), 40, 240);
         ui.bpm_t = 40;
+    }
+    if (drum_page == 2u && notes) {                    /* SOUND (2.7): the key played picks its sound (it is heard
+                                                        * as the keys always play it) */
+        for (k = 0; k < 32u; k++)
+            if ((notes >> k) & 1u) {
+                drum_lane = (uint8_t)lane_of_key(k);
+                ui.force = 1;
+            }
     }
     if ((s = panel_enc(EN_ALGO)) && !ft_on) {
         track_select((uint32_t)clamp((int32_t)song.sel + s, 0, 3));
@@ -625,7 +627,7 @@ static void drum_screen_input(uint32_t pressed, uint32_t home)
 
 /* ---------------------------------------------------------------- REC --- */
 /* a big seven-segment digit, TE style: w x h, segments t thick */
-static void te_digit(int32_t x, int32_t y, int32_t w, int32_t h, int32_t t, uint32_t d, uint16_t c)
+UI_SMALL static void te_digit(int32_t x, int32_t y, int32_t w, int32_t h, int32_t t, uint32_t d, uint16_t c)
 {
     static const uint8_t SEG[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};   /* gfedcba */
     uint32_t m = SEG[d % 10u];
@@ -641,7 +643,7 @@ static void te_digit(int32_t x, int32_t y, int32_t w, int32_t h, int32_t t, uint
 
 static uint8_t rec_shown;
 /* the four tracks, compact, from y0: the one that records is framed in red */
-static void rec_rows(uint32_t rt, uint32_t take, uint32_t y0, uint32_t *cache)
+UI_SMALL static void rec_rows(uint32_t rt, uint32_t take, uint32_t y0, uint32_t *cache)
 {
     uint32_t sig = rt * 3u + rec_wait + take * 5u + drum_kit() * 977u + y0, i, j;
     for (i = 0; i < NTRK; i++) {
@@ -678,9 +680,9 @@ static void rec_rows(uint32_t rt, uint32_t take, uint32_t y0, uint32_t *cache)
 
 /* REC armed (stopped: waiting for the first note, or PLAY), its count-in, or a free take running
  * (seq.c). Armed, the dials say how it records: KNOB 1 MODE free / tempo (an empty project),
- * KNOB 2 LENGTH (1, 2 or 4 bars), KNOB 3 START note / count (ui_input.c rec_knobs). The four tracks
+ * KNOB 2 LENGTH (1, 2 or 4 bars), KNOB 3 START note / count, KNOB 4 QUANT on / off (2.7) (ui_input.c rec_knobs). The four tracks
  * stay in view; the REC LED blinks while armed, is lit during the take. */
-static void rec_screen_draw(void)
+UI_SMALL static void rec_screen_draw(void)
 {
     static uint32_t head, body, rows, foot, dials;
     static uint8_t layout;
@@ -734,7 +736,8 @@ static void rec_screen_draw(void)
     }
     foot = 0;
     /* armed / counting in: what happens next */
-    sig = 2000003u + empty * 7u + free * 11u + rec_count * 13u + count * 17u + ci_beat * 19u + blink * 31u;
+    sig = 2000003u + empty * 7u + free * 11u + rec_count * 13u + count * 17u + ci_beat * 19u + blink * 31u +
+          rec_quant_off * 37u;
     if (ui.force || sig != body) {
         static const char *const L1[3] = {"play freely", "play a note", "press play"};
         static const char *const L2[3] = {"then rec on the 1", "it starts the loop", "4 clicks, then rec"};
@@ -759,11 +762,11 @@ static void rec_screen_draw(void)
     rec_rows(rt, 0u, 106u, &rows);
     {   /* the dials: how it records */
         static char v[3][10];
-        static const char *const LAB_E[4] = {"mode", "length", "start", ""};
-        static const char *const LAB_F[4] = {"mode", "", "", ""};
-        static const char *const LAB_N[4] = {"", "length", "start", ""};
+        static const char *const LAB_E[4] = {"mode", "length", "start", "quant"};
+        static const char *const LAB_F[4] = {"mode", "", "", "quant"};
+        static const char *const LAB_N[4] = {"", "length", "start", "quant"};
         static const char *const LAB_0[4] = {"", "", "", ""};
-        const char *val[4] = {v[0], v[1], v[2], ""};
+        const char *val[4] = {v[0], v[1], v[2], rec_quant_off ? "off" : "on"};   /* (2.7) QUANT */
         int32_t ratio[4] = {0, 0, 0, 0};
         uint32_t len = (uint32_t)clamp(TSEL->p[P_SLEN], 1, NSTEP);
         str_cpy(v[0], rec_tempo ? "tempo" : "free", sizeof v[0]);
@@ -778,6 +781,7 @@ static void rec_screen_draw(void)
         ratio[0] = rec_tempo ? 1000 : 0;
         ratio[1] = (int32_t)(len - 1u) * 1000 / (NSTEP - 1);
         ratio[2] = rec_count ? 1000 : 0;
+        ratio[3] = rec_quant_off ? 0 : 1000;
         {
             const char *const *lab = count ? LAB_0 : !empty ? LAB_N : free ? LAB_F : LAB_E;
             uint32_t k;

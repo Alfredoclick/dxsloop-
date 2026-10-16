@@ -1,6 +1,6 @@
 # sloopDX: was noch zu tun ist
 
-Stand 2026-10-06 (abends, nach dem Merge von SLOOP 2.3). Reihenfolge = Priorität. Host-Tests (`sh tests/run_tests.sh`) sind grün, der
+Stand 2026-10-16 (nach dem Merge von SLOOP 2.6 / 2.7, sloopDX 4.0; siehe 1p). Reihenfolge = Priorität. Host-Tests (`sh tests/run_tests.sh`) sind grün, der
 Firmware-Build läuft (`./build.sh`: RAM 85 KB von 96 KB); auf dem FM-1 lief noch nichts.
 
 ## 1. Gerätetest (siehe START.md)
@@ -31,6 +31,34 @@ Firmware-Build läuft (`./build.sh`: RAM 85 KB von 96 KB); auf dem FM-1 lief noc
       (Hall und Pan bleiben auf HOME). Test: `tests/drumkit_test.c`.
 - [x] Drei moderne Bässe: DEEP SUB, 808 SUB, REESE (vor INIT VOICE; Werk 01–20, Bank 21–52). Alte Spielstände werden
       beim Laden umnummeriert (`core.h DX_VOICE_FROM_V1`). Am Gerät nachhören (808-Pitch-Drop, Reese-Schwebung).
+
+## 1p. 4.0: aus SLOOP 2.6 / 2.7 übernommen (2026-10-16)
+
+Drei-Wege-Merge mit SLOOP 2.5 (`fa9ce57`) als Basis, upstream `ba54ba5` (v2.7). Host-Tests grün, Firmware baut
+(RAM 76 KB von 96, lowram 23 von 29,5 KB, Image 264 KB). Am Gerät noch nicht gelaufen.
+
+- [x] Zweiter Kern (andrerezemini #111, X0X / Melodee): Render-Split in `fx.c`, `.lowram`, RAM-Kürzungen (Presets per XIP,
+      `scratch.h`), Spannungen wie M-VAVE (X0X 1.0.9), Menü SYSTEM → 2ND CORE. DX7-Audit: der statische Operator-Bus in
+      `dx_compute_ext` liegt jetzt auf dem Stack, die Drum-Puffer in `.lowram`. `tests/mix_split_test.c` mit DX7-Szenen,
+      `tests/cpu1_modes.sh`: in jedem Modus bit-gleich, TSan ohne Race.
+- [x] MIDI: Kanal pro Spur (GLO › MIDI / MIDI 2 / MIDI 3), Sustain, Pitch Bend, Program Change (Drums: Kit n), MIDI LEARN,
+      Step-Eingabe vom Keyboard, FX CH, DR MAP, REMOTE, CLOCK OUT, IN = CH n. Gespeichert im MIDI-Teil des Settings-Objekts.
+- [x] Arp: 15 Modi (nach OMNI / FLW: 8–16), KBD HOLD, Arp läuft beim Soundwechsel weiter, ARP SWG gestoppt, #191.
+- [x] Overdub über gehaltene Noten, Step-Velocity (SEQ + Step + KNOB 2), Live-Drum-Mutes (EDIT + schwarze Taste).
+- [x] 27 Punch-ins, REV / ECHO THROW, INSERT pro Spur, LFO 2, ENV SYNC, TEXTURE (ohne Sample-Slots), Look-ahead-Limiter,
+      Klickfreies Laden über klingenden Noten, KNOB ACCEL, LEVEL / PAN gleitend, Favoriten, SAVE › SECTION + ERASE,
+      USB RATE, Menü in Abschnitten (FACTORY RESET jetzt auf ABOUT), Terminus Bold, Theme (Firmware-Seite).
+- [x] Projektformat 8 (FUN8; 7 wird nach Anzahl umgesetzt), Editor-Protokoll v12 (Backup-Objekte 10 MIDI, 11 Theme;
+      LIVE = 77 in der Firmware), Web-Editor kennt das neue Layout (Seiten INSERT, LFO 2, MIDI 1–3, TEXTURE).
+- [ ] **Am Gerät:** ABOUT „2 CORES“ und die Spannungen, Konsole `lowram 1`, `cpu1_timeouts 0`; CPU mit 3 DX7-Parts
+      (Akkorde) + Drums, 2ND CORE ON gegen OFF; MIDI-Kanäle, Sustain, Bend, LEARN, FX CH, REMOTE, CLOCK OUT mit einer DAW;
+      neue Arp-Modi, KBD HOLD; Schrift (Terminus Bold) auf den DX7-Seiten lesbar?
+- [ ] Nicht übernommen, eigener Entwurf nötig: REC QUANT off (braucht SLOOPs Mikro-Timing / Nudge pro Step, 2.4),
+      Parameter-Locks und Fills.
+- [ ] Cheat-Sheet-PDFs neu drucken (HTML für 4.0 angepasst: Menü-Abschnitte, MIDI-Seiten, 27 Punch-ins); in dieser Sitzung
+      war kein Chrome erreichbar.
+- [ ] Web-Editor nach SLOOP 2.7: LIVE-Seite (Firmware antwortet schon), Songs als Dateien + Playlist, Theme-Seite,
+      Offline-App (sw.js); dazu die offenen Punkte aus 1o (Piano Roll, MIDI-Datei, Song-Seite).
 
 ## 1o. 3.4: aus SLOOP 2.5 übernommen
 

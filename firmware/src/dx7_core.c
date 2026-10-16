@@ -525,7 +525,8 @@ static void dx_op_noise(int32_t *out, int32_t phase, int32_t freq, int32_t g1, i
  * lfo_delay as Dexed's synth gives them (dx_compute_lfo: the note's own) */
 static void dx_compute_ext(dxv_t *v, int32_t *out, int32_t lfo_val, int32_t lfo_delay, int32_t pitch)
 {
-    static int32_t bus[2][DX_N];
+    int32_t bus[2][DX_N];                        /* (on the stack, not static: 4.0 renders parts and drums on both
+                                                  * cores at once; only read where has[] says it was written) */
     int32_t fq[6];
     uint8_t has[3] = {1, 0, 0};
     int32_t pmod, amod, senslfo, pm1;

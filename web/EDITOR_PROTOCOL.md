@@ -21,6 +21,18 @@ answer with the value that was taken. SLOOP 2.3's backup (`BK_LIST` / `BK_GET` /
 v6) works as there, with object 8 = the DX7 user bank (4096 voice bytes, length 0 = none) in place of the
 sample slots 32..34.
 
+**v12 (sloopDX 4.0, after SLOOP 2.6 / 2.7):** `INFO` ends with 12. The parameter layout grew: `P_COUNT` 70, `P_E0` 62
+(the nine track parameters of SLOOP 2.6 before it: `P_ITYPE` 53, `P_IA` .. `P_IC`, `P_IMIX` 57 the INSERT, `P_ESYNC` 58,
+`P_LSYNC` 59, `P_LTRIG` 60, `P_LPOL` 61), `G_COUNT` 51 (after `G_DRDLY` 34: `G_CH1` .. `G_CH3` 35..37, `G_CHOTH` 38 (GLO >
+MIDI), `G_TXSRC` .. `G_TXDUCK` 39..45 (TEXTURE), `G_BEND` 46, `G_FXCH` 47, `G_DRMAP` 48, `G_RMCH` 49, `G_CLKOUT` 50; the
+MIDI ones are settings of the FM-1, not of a project). `P_AMODE` has 17 names (SLOOP 2.7's nine after OMNI and FLW).
+The backup has two more objects: **10** the MIDI part (the MIDI LEARN map, 16 × 2 bytes, then CH1 CH2 CH3, the drum
+channel | OTHER << 7, BEND, FX CH, DR MAP | CLK OUT << 1, REMOTE: 40 bytes; listed only while it is not the default)
+and **11** your theme (SLOOP 2.7's `theme_t`, listed only when there is one). Projects are format 8 (`FUN8`: format 7
+with the nine parameters and the TEXTURE in 8 bytes after the header; format 7 loads, mapped by count). Command 77
+`LIVE` is SLOOP 2.7's (editor_live.c: transport, sections, the mixer, the punch-in effects, the THROWs; on the drum
+track its sound byte reads and sets the lanes' TUNE and DECAY macros in SLOOP's ranges).
+
 **rc 3 (sloopDX 3.3, after SLOOP 2.4): the song is playing.** A flash write silences the audio for ~50 ms and stalls
 USB, so every command that writes flash refuses while the FM-1 plays and answers rc 3, changing nothing in flash:
 UP_PUT, UP_STORE, UP_ERASE, BANK_END (the bank is taken into RAM and plays, not stored), BANK_ERASE, BANK_SAVE,
@@ -310,7 +322,7 @@ drum macros) still load. Numbers are 5 × 7 bit (u35, LSB first); data is pack7.
 | --- | --- | --- |
 | 34 BK_LIST | — | rc (0 ok, 4 no flash), count, then per object: id, length u35, CRC-32 u35 (zlib). Takes a snapshot of the working project and the settings for GET |
 | 35 BK_GET | id, offset u35, count (2 × 7 bit, 1..256) | id, rc (0 ok, 1 arguments, 5 the snapshot is gone: LIST again), offset u35, count, pack7 data |
-| 36 BK_PUT | op 0 begin: id 0..9, length u35, CRC-32 u35 · op 1 data: id, offset u35, pack7 (≤ 256 bytes, in order) · op 2 commit: id · op 3 abort: id | op, id, rc: 0 ok, 1 arguments, 2 not a valid object (CRC, magic, sizes, ranges), 3 stop the song first (projects), 4 flash, 5 no begin for this object (or more than 15 s ago) |
+| 36 BK_PUT | op 0 begin: id 0..11, length u35, CRC-32 u35 · op 1 data: id, offset u35, pack7 (≤ 256 bytes, in order) · op 2 commit: id · op 3 abort: id | op, id, rc: 0 ok, 1 arguments, 2 not a valid object (CRC, magic, sizes, ranges), 3 stop the song first (projects), 4 flash, 5 no begin for this object (or more than 15 s ago) |
 
 A restore stages one object in RAM (the project load buffer), checks it at the commit as a load checks it
 (projects: magic, size and sum, older formats converted; banks: magic, record size, slot count; settings:

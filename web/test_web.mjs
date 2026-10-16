@@ -57,8 +57,8 @@ async function editorMock() {
   inp.onmidimessage = (e) => link.receive(e.data);
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
-  ok(info.nengines === 1 && info.engines.join() === "DX7" && info.pcount === 61 && info.pe0 === 53 && info.gcount === 34 && info.nstep === 128
-    && info.ntrk === 4 && info.proto === 11 && /^FELUCCA sloopDX/.test(info.version), "editor: INFO (one engine, DX7; protocol 11)");
+  ok(info.nengines === 1 && info.engines.join() === "DX7" && info.pcount === 70 && info.pe0 === 62 && info.gcount === 51 && info.nstep === 128
+    && info.ntrk === 4 && info.proto === 12 && /^FELUCCA sloopDX/.test(info.version), "editor: INFO (one engine, DX7; protocol 12)");
   /* the DX7 engine as eng_dx7.c describes it: VOICE (20 factory voices, then U01..U32), BRITE ATK DEC REL FDBK, CUT RESO */
   const ed = [];
   for (let i = 0; i < 8; i++) ed.push(E.parse[E.CMD.DESC](await rq(E.req.desc(0, info.pe0 + i))));
@@ -220,7 +220,7 @@ async function editorLibrarian() {
   const ctx = { keys, engines: info.engines, firmware: info.version, pe0: info.pe0 };
   const pts = [cap, { ...bass, engineName: info.engines[bass.engine], tags: ["bass", "device"] }];
   const file = JSON.parse(JSON.stringify(E.libraryFile("library", pts, ctx)));
-  ok(file.format === "felucca-library" && file.version === 1 && file.pCount === 61 && file.paramLabels.length === 61 && file.engines.join() === "DX7",
+  ok(file.format === "felucca-library" && file.version === 1 && file.pCount === 70 && file.paramLabels.length === 70 && file.engines.join() === "DX7",
     "library file: versioned, with P_COUNT, labels and engines");
   const back = E.readLibraryFile(file, ctx);
   ok(back.patches.length === 2 && !back.skipped && eq(back.patches[0].p, cap.p) && eq(back.patches[1].p, bass.p)
@@ -231,18 +231,18 @@ async function editorLibrarian() {
   const eng2 = ["FMDRUM", "DX7"];
   const fut = E.readLibraryFile(file, { keys: keys2, engines: eng2 });
   const p0 = fut.patches[0].p;
-  ok(fut.patches.length === 2 && p0.length === 62 && p0[5] === null && p0[6] === cap.p[5] && p0[61] === cap.p[60]
+  ok(fut.patches.length === 2 && p0.length === 71 && p0[5] === null && p0[6] === cap.p[5] && p0[70] === cap.p[69]
     && fut.patches[0].engine === 1 && fut.patches[1].engine === 1, "library file: other ids / engine order mapped by label and name");
   /* a library and a sound file of sloopDX 2.6 (58 parameters, the sends labelled DST CHO DLY REV, E0 at 50) */
   {
-    const k26 = [...keys.slice(0, 33), "DST", "CHO", "DLY", "REV", ...keys.slice(37, 50), ...keys.slice(53)];
-    const p26 = [...cap.p.slice(0, 33), 11, 22, 33, 44, ...cap.p.slice(37, 50), ...cap.p.slice(53)];
+    const k26 = [...keys.slice(0, 33), "DST", "CHO", "DLY", "REV", ...keys.slice(37, 50), ...keys.slice(62)];
+    const p26 = [...cap.p.slice(0, 33), 11, 22, 33, 44, ...cap.p.slice(37, 50), ...cap.p.slice(62)];
     const lib = E.readLibraryFile({ ...file, paramLabels: k26, patches: [{ ...file.patches[0], params: p26 }] }, ctx);
     const q = lib.patches[0].p;
     const one = E.readLibraryFile({ format: "felucca-patch", version: 1, engine: 0, engineName: "DX7", p: p26 }, ctx).patches[0].p;
-    ok(q.length === 61 && q[33] === 11 && q[34] === 22 && q[35] === 33 && q[36] === 44 && q[50] === null && q[53] === cap.p[53]
-      && one.length === 61 && one[36] === 44 && one[50] === null && one[52] === null && one[53] === cap.p[53] && one[60] === cap.p[60],
-      "2.6 files: old send labels and E0..E7 mapped (DIST page params default)");
+    ok(q.length === 70 && q[33] === 11 && q[34] === 22 && q[35] === 33 && q[36] === 44 && q[50] === null && q[53] === null && q[62] === cap.p[62]
+      && one.length === 70 && one[36] === 44 && one[50] === null && one[52] === null && one[61] === null && one[62] === cap.p[62] && one[69] === cap.p[69],
+      "2.6 files: old send labels and E0..E7 mapped (DIST page and 4.0 params default)");
   }
   /* a library of sloopDX 1.9 (17 factory voices, no CUT / RESO: E6 / E7 saved as 0) read with a 2.0 device:
      VOICE 16 on moves up by three (2.0 put DEEP SUB, 808 SUB and REESE before INIT VOICE), CUT open, RESO 0;
@@ -282,7 +282,7 @@ async function editorLive() {
   const dump = E.parse[C.DUMP](await pend, info);
   const ch = ev.pushes.find((f) => f.cmd === C.CHANGED);
   const cv = ch && E.parse[C.CHANGED](ch.a);
-  ok(dump.p.length === 61 && ch && ch.pending === C.DUMP && cv.scope === 0 && cv.id === 9 && cv.value === kn.value && !ev.unknown.length,
+  ok(dump.p.length === 70 && ch && ch.pending === C.DUMP && cv.scope === 0 && cv.id === 9 && cv.value === kn.value && !ev.unknown.length,
     "live: CHANGED while DUMP waits -> push handler, reply still matched");
   const rl = m.sim.reload();
   m.sim.step(3);
@@ -530,7 +530,7 @@ async function editorKit() {
   const d = E.parse[C.KIT_DICE](await rq(E.req.kitDice(4711)));
   const after2 = await E.bkGetObject(rq, 9);
   const badRc = await E.bkPutObject(rq, 9, new Uint8Array(100));
-  ok(info.proto === 11 && before && before.length === E.UKIT.LEN && rc === 0 && eq(after, mod) && E.kitSeedOf(after) === 1234 &&
+  ok(info.proto === 12 && before && before.length === E.UKIT.LEN && rc === 0 && eq(after, mod) && E.kitSeedOf(after) === 1234 &&
      d.rc === 0 && d.seed === 4711 && E.kitSeedOf(after2) === 4711 && badRc !== 0,
     "kit: MY KIT out of the mock, changed, back (backup object 9); KIT_DICE with a seed; a wrong object refused");
   done();
@@ -541,9 +541,9 @@ async function editorBackup() {
   const C = E.CMD;
   const { m, rq, done } = attachMock({});
   const info = E.parse[C.INFO](await rq(E.req.info()));
-  ok(info.proto === 11, "backup: INFO protocol 11 (backup since 6)");
+  ok(info.proto === 12, "backup: INFO protocol 12 (backup since 6)");
   const ec = readFileSync(join(HERE, "../firmware/src/editor.c"), "utf8");
-  ok(/ED_BK_IDS\[\] = \{0, 1, 2, 3, 4, 5, 6, 7, 8, 9\}/.test(ec), "backup: the object ids == editor.c ED_BK_IDS (0..9: 9 MY KIT; no sample slots)");
+  ok(/ED_BK_IDS\[\] = \{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11\}/.test(ec), "backup: the object ids == editor.c ED_BK_IDS (0..11: 9 MY KIT, 10 MIDI, 11 theme; no sample slots)");
   await rq(E.req.upStore(3, "BACKUP ME"));
   await rq(E.req.project(1, 2), { timeout: 4000, retries: 0 });
   const syx = E.dx7CheckSyx(makeBank());
@@ -577,7 +577,7 @@ async function editorBackup() {
   const objs = E.backupObjects(sloop);
   ok(!objs.has(32) && !objs.has(8) && objs.has(0) && objs.has(1), "backup: a SLOOP 2.3 file (sample slots 32..34) is accepted without them");
   let wrong = "";
-  try { E.backupObjects({ ...A, objects: [...A.objects, { id: 10, len: 0, crc: 0, data: "" }] }); } catch (e) { wrong = e.code; }
+  try { E.backupObjects({ ...A, objects: [...A.objects, { id: 12, len: 0, crc: 0, data: "" }] }); } catch (e) { wrong = e.code; }
   ok(wrong === "bkBad", "backup: an unknown object is refused");
   done();
   const old = attachMock({ noBackup: true });
@@ -598,7 +598,7 @@ async function editorV5() {
   const C = E.CMD;
   const { m, rq, ev, done } = attachMock({ watchMs: 1000 });
   const info = E.parse[C.INFO](await rq(E.req.info()));
-  ok(info.proto === 11 && /sloopDX/.test(info.version) && info.pcount === 61 && info.gcount === 34 && info.pe0 === 53, "v5: INFO ends with the protocol version (11: sloopDX, 128 steps)");
+  ok(info.proto === 12 && /sloopDX/.test(info.version) && info.pcount === 70 && info.gcount === 51 && info.pe0 === 62, "v5: INFO ends with the protocol version (12: sloopDX 4.0)");
   /* the firmware says the same: ED_DRUM_STEP is command 33, the backup 34..36 (SLOOP 2.3, protocol 6), the bank
      commands 37..41 (sloopDX, protocol 7), voice editing 42..45 (protocol 8), P_CHORD / the master globals as the mock has them */
   const ec = readFileSync(join(HERE, "../firmware/src/editor.c"), "utf8"), pc = readFileSync(join(HERE, "../firmware/src/params.c"), "utf8");
@@ -611,7 +611,7 @@ async function editorV5() {
     && names.indexOf("ED_VOICE_GET") + 1 === 42 && names.indexOf("ED_BANK_SAVE") + 1 === 45
     && names.indexOf("ED_BANK_SELECT") + 1 === C.BANK_SELECT && C.BANK_SELECT === 46
     && names.indexOf("ED_KIT_DICE") + 1 === C.KIT_DICE && C.KIT_DICE === 47
-    && /ed_b\(ED_PROTOCOL\)/.test(ec) && fwProto === 11,
+    && /ed_b\(ED_PROTOCOL\)/.test(ec) && fwProto === 12,
     `v5: command numbers and INFO == editor.c (BK_* 34..36, BANK_* 37..41, VOICE_* 42..45, BANK_SELECT 46, KIT_DICE 47, firmware protocol ${fwProto})`);
   const enumNames = (id) => (new RegExp(`${id}\\[\\] = \\{([^}]*)\\}`).exec(pc) || [])[1].split(",").map((x) => x.trim().replace(/"/g, ""));
   const chord = E.parse[C.DESC](await rq(E.req.desc(0, 49)));
@@ -741,7 +741,7 @@ async function editorVoice() {
   const desc = E.parse[C.DESC](await rq(E.req.desc(0, info.pe0)));
   const saved = await E.dxvoice.save(rq);
   const u1 = await E.dxvoice.get(rq, 20);
-  ok(info.proto === 11 && rc === 0 && alg === 9 && fbClamped === 7 && u6[134] === 9 && u6[135] === 7 && u6[16 + 21 * 5] === slap[16 + 21 * 5],
+  ok(info.proto === 12 && rc === 0 && alg === 9 && fbClamped === 7 && u6[134] === 9 && u6[135] === 7 && u6[16 + 21 * 5] === slap[16 + 21 * 5],
     "voice: VOICE_GET / PUT / PARAM on the mock (ALG 10 set, feedback clamped to 7, OP1 kept)");
   ok(desc.names[20 + 5] === "MY SLAP" && desc.names[20] === "INIT VOICE" && saved === 0 && u1[16 + 21 * 5] === 99 && !ev.unknown.length,
     "voice: the name in DESC of VOICE, the other slots INIT VOICE, BANK_SAVE ok");

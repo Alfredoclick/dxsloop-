@@ -16,6 +16,7 @@
  *   DRUMS   the grid: sound / step / hit / level knobs, GRID <-> KIT
  * then 20000 frames of random use: every draw stays on the screen. */
 #define FELUCCA_ARRANGER 1
+#define FELUCCA_CDC 1             /* (sloopDX builds the serial console: menu USB SERIAL) */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -48,10 +49,11 @@ static int16_t scope_buf[SCOPE_N];
 static uint32_t scope_w;
 #include "../firmware/src/panel.c"
 #include "../firmware/src/ui.c"
-static uint32_t saves, loads;
+static uint32_t saves, loads, erases;
 static int project_used(uint32_t i) { return i < 2; }
 static void project_save(uint32_t i) { (void)i; saves++; ui_message("SAVED"); }
 static void project_load(uint32_t i) { (void)i; loads++; }
+static void project_erase(uint32_t i) { (void)i; erases++; ui_message("ERASED"); }
 static void arrangement_save(void) {}
 static uint32_t arrangement_ready(void) { return 3; }
 static void arrangement_apply(uint32_t s) { (void)s; }
@@ -63,6 +65,7 @@ static void section_store(uint32_t s) { sec_stores++; live_sec = (int8_t)s; }
 static void section_load(uint32_t s) { sec_loads++; live_sec = (int8_t)s; }
 static int up_used(uint32_t k) { return k < 2; }
 static int up_load(uint32_t k) { (void)k; return 0; }
+static int up_load_to(track_t *t, uint32_t k) { (void)t; (void)k; return 0; }
 static uint32_t up_count(void) { return 2; }
 static uint32_t up_nth(uint32_t n) { return n; }
 static uint32_t up_rank(uint32_t s) { return s; }
@@ -85,6 +88,29 @@ static int dx_bank_select(uint32_t k) { if (k >= DX_NBANKS) return 1; dx_selects
 #include "../firmware/src/ui_menu.c"
 #include "../firmware/src/ui_input.c"
 #include "../firmware/src/splash.c"
+/* (2.7) the theme's CRC: storage.c's st_crc32 (its flash hooks unused here) */
+static int st_read(uint32_t off, void *dst, uint32_t n) { (void)off, (void)dst, (void)n; return -1; }
+static int st_erase(uint32_t off) { (void)off; return -1; }
+static int st_prog(uint32_t off, const void *src, uint32_t n) { (void)off, (void)src, (void)n; return -1; }
+#include "../firmware/src/storage.c"
+/* (2.7) the editor's LIVE page (firmware/src/editor_live.c): its reply captured here */
+static uint8_t lv_out[96];
+static uint32_t lv_n;
+static void ed_b(uint32_t v) { if (lv_n < sizeof lv_out) lv_out[lv_n++] = (uint8_t)(v & 0x7Fu); }
+static void ed_v(int32_t v) { uint32_t u = (uint32_t)(clamp(v, -8192, 8191) + 8192); ed_b(u); ed_b(u >> 7); }
+#include "../firmware/src/editor_live.c"
+static void live(uint32_t op, uint32_t x, uint32_t y, uint32_t z)
+{
+    uint8_t a[4] = {(uint8_t)op, (uint8_t)x, (uint8_t)y, (uint8_t)z};
+    lv_n = 0;
+    ed_live(a, 4);
+}
+static void live5(uint32_t op, uint32_t x, uint32_t y, uint32_t z, uint32_t w)
+{
+    uint8_t a[5] = {(uint8_t)op, (uint8_t)x, (uint8_t)y, (uint8_t)z, (uint8_t)w};
+    lv_n = 0;
+    ed_live(a, 5);
+}
 static const char *outdir;
 static void ppm(const char *name) {
     char path[512]; snprintf(path,sizeof path,"%s/%s.ppm",outdir,name);
@@ -152,10 +178,18 @@ int main(int argc, char **argv)
         midi_in_q[mi_w % MQ] = 0x0Cu | (0xC0u | 1u) << 8 | 2u << 16; mi_w++;       /* channel 2: 03 FM BASS */
         midi_in_q[mi_w % MQ] = 0x0Cu | (0xC0u | dch) << 8 | 5u << 16; mi_w++;
         frame();
-        check(midi_pc[1] == 3u && !midi_pc[trk_index(TDRUM) % NTRK], "MIDI PC: noted for the track, not for the drums");
-        midi_pc_take();
-        check(trk[1].preset == bank_pi[2] && trk[1].preset != p1 && song.sel == sel && !midi_pc[1],
-              "MIDI PC: channel 2, program 2 = 03 FM BASS on track 2, the selected track stays");
+        check(midi_pc[1] == 3u && midi_pc[trk_index(TDRUM) % NTRK] == 6u, "MIDI PC: noted for the track and (4.0) the drums");
+        {
+            int16_t kit0 = TDRUM->p[P_E0];
+            midi_pc_take();
+            check(trk[1].preset == bank_pi[2] && trk[1].preset != p1 && song.sel == sel && !midi_pc[1],
+                  "MIDI PC: channel 2, program 2 = 03 FM BASS on track 2, the selected track stays");
+            check(DRUM_KITS == 5u && TDRUM->p[P_E0] == kit0, "MIDI PC on the drum channel: program 5, beyond the 5 kits: nothing");
+            midi_in_q[mi_w % MQ] = 0x0Cu | (0xC0u | dch) << 8 | 2u << 16; mi_w++;   /* the third kit */
+            frame(); midi_pc_take();
+            check(TDRUM->p[P_E0] == 2, "MIDI PC on the drum channel: program 2 = the third kit");
+            TDRUM->p[P_E0] = kit0;
+        }
         song.sel = 1; preset_pos(&total); song.sel = (uint8_t)sel;
         midi_in_q[mi_w % MQ] = 0x0Cu | (0xC0u | 1u) << 8 | 127u << 16; mi_w++;
         frame(); midi_pc_take();
@@ -304,6 +338,10 @@ int main(int argc, char **argv)
     fm1_in.notes = 1u << 4; frame(); check(punch.req == 2, "FX + the 3rd white key: punch effect 3");
     ppm("layer-punch-on");
     fm1_in.notes = 0; frame(); check(punch.req == -1, "key up: the mix comes back");
+    fm1_in.notes = 1u << 17; frame(); check(punch.req == PX_FREEZE, "FX + the black key A#4: FREEZE (2.6: 11 black-key effects)");
+    check(keys_lit() == 1u << 17, "its key lights");
+    ppm("layer-punch-black");
+    fm1_in.notes = 0; frame(); check(punch.req == -1, "black key up: the mix comes back");
     encs[panel.enc[EN_K2]] = 10; frame(); check(song.g[G_DUST] > 0, "FX + KNOB 2: DUST");
     encs[panel.enc[EN_K1]] = -10; frame(); check(song.g[G_FILT] < 0, "FX + KNOB 1: the filter (low-pass)");
     release(B_FX); check(cur_page()->scope == SC_TRK && ui.layer == LY_PLAY, "FX used then let go: no FX page");
@@ -598,7 +636,7 @@ int main(int argc, char **argv)
         frame();
         check((keys_lit() & (1u << 7)) == 0, "NOTES off: a sounding synth voice lights no key");
         ui.menu = 1; ui.menu_sel = MI_NOTES; ui.force = 1; frame();
-        encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         check(lights_notes == 1u, "menu NOTES: KNOB 1 right: ON");
         ui.force = 1; frame(); ppm("page-menu-notes");
         ui.menu = 0; ui.force = 1; go_home(); frame();
@@ -639,12 +677,12 @@ int main(int argc, char **argv)
         check((lights_word() >> 8 & 1u) == 1u, "NOTES: saved with the light settings");
         ui.menu = 1; ui.menu_sel = MI_USB; ui.force = 1; frame(); ppm("menu-usb");
         usb_full = 0;
-        encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         check(usb_full == 1u && (lights_word() >> 11 & 1u) == 1u, "menu USB AUDIO: KNOB 1 -> FULL, saved with the settings");
         tap(B_OCTUP);
         check(usb_full == 0u && ui.menu == 1, "menu USB AUDIO: OCT+ toggles back to MASTER");
         ui.menu_sel = MI_SERIAL; usb_serial = 0; ui.force = 1; frame(); ppm("menu-serial");
-        encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         check(usb_serial == 1u && (lights_word() >> 16 & 1u) == 1u, "menu USB SERIAL: KNOB 1 -> ON, saved with the settings");
         tap(B_OCTUP);
         check(usb_serial == 0u && ui.menu == 1, "menu USB SERIAL: OCT+ toggles back to OFF (the default)");
@@ -653,21 +691,21 @@ int main(int argc, char **argv)
         ui.menu = 1; ui.menu_sel = MI_NOTES; ui.force = 1; frame();
         tap(B_OCTUP);
         check(lights_notes == 0u && ui.menu == 1, "menu NOTES: OCT+ toggles it off");
-        ui.menu_sel = MI_RESET; ui.force = 1; frame(); ppm("menu-reset");
+        ui.menu = 2; ui.force = 1; frame(); ppm("menu-reset");   /* (4.0: FACTORY RESET on the ABOUT page) */
         song.playing = 1;
         tap(B_OCTUP);
-        check(ui.menu_arm == 0u && host_factory_resets == 0u, "menu FACTORY RESET: refused while playing");
+        check(ui.menu_arm == 0u && host_factory_resets == 0u, "ABOUT, FACTORY RESET: refused while playing");
         song.playing = 0;
         tap(B_OCTUP);
-        check(ui.menu_arm > 0u && host_factory_resets == 0u && ui.menu == 1, "menu FACTORY RESET: the first OCT+ only arms");
-        encs[panel.enc[EN_PRESET]] = 1; frame();
-        check(ui.menu_arm == 0u && host_factory_resets == 0u, "menu FACTORY RESET: moving the cursor disarms");
-        ui.menu_sel = MI_RESET;
+        check(ui.menu_arm > 0u && host_factory_resets == 0u && ui.menu == 2, "ABOUT, FACTORY RESET: the first OCT+ only arms");
+        tap(B_OCTDN);
+        check(ui.menu_arm == 0u && host_factory_resets == 0u && ui.menu == 1, "ABOUT, FACTORY RESET: OCT- disarms (back to the menu)");
+        ui.menu = 2; ui.force = 1; frame();
         tap(B_OCTUP);
         for (i = 0; i < 100u; i++) frame();
-        check(ui.menu_arm == 0u && host_factory_resets == 0u, "menu FACTORY RESET: the arming expires after 90 frames");
+        check(ui.menu_arm == 0u && host_factory_resets == 0u, "ABOUT, FACTORY RESET: the arming expires after 90 frames");
         tap(B_OCTUP); frame(); tap(B_OCTUP);
-        check(host_factory_resets == 1u, "menu FACTORY RESET: OCT+ twice erases everything (on the host: counted)");
+        check(host_factory_resets == 1u, "ABOUT, FACTORY RESET: OCT+ twice erases everything (on the host: counted)");
         ui.menu = 0; ui.force = 1; go_home(); frame();
     }
 
@@ -676,25 +714,25 @@ int main(int argc, char **argv)
         go_home(); ui.force = 1; frame();
         check(lights_lvl == LIGHTS_OFF && fm1_led_bg_ns == 0u && lights_keys_mask() == 0u, "LIGHTS: off by default");
         ui.menu = 1; ui.menu_sel = MI_LIGHTS; ui.force = 1; frame();
-        encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         check(lights_lvl == LIGHTS_LOW && fm1_led_bg_ns == 500u, "LIGHTS: KNOB 1 right: LOW (a 0.5 us pulse a frame)");
-        encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         check(lights_lvl == LIGHTS_MID && fm1_led_bg_ns == 1000u, "LIGHTS: MID (1 us)");
-        encs[panel.enc[EN_K1]] = 1; frame(); encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame(); encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         check(lights_lvl == LIGHTS_HIGH && fm1_led_bg_ns == 2000u, "LIGHTS: HIGH (2 us, under the 4 us glow), and it stops there");
         ui.force = 1; frame(); ppm("page-menu-lights");
-        encs[panel.enc[EN_K1]] = -1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = -1; frame();
         check(lights_lvl == LIGHTS_MID, "LIGHTS: KNOB 1 left: dimmer");
         tap(B_OCTUP);
         check(lights_lvl == LIGHTS_HIGH && ui.menu == 1, "LIGHTS: OCT+ steps round, the menu stays");
         tap(B_OCTUP);
         check(lights_lvl == LIGHTS_OFF && fm1_led_bg_ns == 0u, "LIGHTS: ... back to OFF");
         ui.menu_sel = MI_KEYS; ui.force = 1; frame();
-        encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         m = lights_keys_mask();
         check(lights_keys == KEYS_C && lights_lvl == LIGHTS_LOW && m == (1u << 7 | 1u << 19),
               "KEYS: C KEYS (C4, C5), LIGHTS raised to LOW");
-        encs[panel.enc[EN_K1]] = 1; frame(); encs[panel.enc[EN_K1]] = 1; frame();
+        encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame(); encs[panel.enc[EN_K1 + mi_row(ui.menu_sel % MI_COUNT)]] = 1; frame();
         for (m = lights_keys_mask(), nbits = 0; m; m &= m - 1u)
             nbits++;
         check(lights_keys == KEYS_WHITE && nbits == 16u && !(lights_keys_mask() & (1u << 1)),

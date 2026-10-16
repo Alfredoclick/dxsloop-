@@ -19,9 +19,9 @@ Free and open source (GPL-3.0). A fork of <a href="https://github.com/isod89/slo
 
 sloopDX turns the FM-1 into what it says on the box: an FM synthesizer. There is one engine, a six-operator DX7 voice (Dexed's msfa core, ported to integer C and checked against Dexed (99 % of samples identical, the rest within 1-2 LSB)). The drum track plays FM drums made with the same engine. SLOOP's live workflow stays as it is: tracks, layers, sequencer, song mode and effects — and, from SLOOP 2.3, **USB audio**, a **MIDI keyboard on the jack**, **MIDI clock**, **lights for playing in the dark** and a **full backup**. The sample engines, sample sets and the other eight engines are gone.
 
-**New in 3.5: a DAW picks the sounds.** MIDI Program Change loads a preset into the track the channel plays, as the PRESETS knob does ([MIDI](#midi-in)). **New in 2.2: patterns up to 128 steps.** The four tracks share 256 steps: one track can run 128, the others take what is left; OCT− / OCT+ page through 8 pages. **New in 2.1: a drum machine you can program.** Every one of the 16 drum sounds has eight macros on the FM-1 (TUNE, DECAY, SWEEP, BRIGHT, NOISE, LEVEL, PAN, CHOKE, plus its own reverb send). A real **noise operator** gives snares, claps and hats their hiss. Steps can **lock TUNE and DECAY** per hit. **MY KIT** keeps your own kit in flash and travels as a .syx, and the **dice** rolls a whole new kit from a seed you can roll again.
+**New in 4.0: both processor cores, and SLOOP 2.6 / 2.7's MIDI.** The sound is computed on both of the FM-1's cores (about twice the room for DX7 voices and effects), every track has its own MIDI channel, sustain pedal, pitch bend, MIDI LEARN, step entry from a keyboard, the punch-in effects and the buttons over MIDI, MIDI clock out; 15 arp modes and KBD HOLD; 27 punch-in effects; an INSERT effect on every track ([From SLOOP 2.6 / 2.7](#from-sloop-26--27-new-in-40)). **New in 3.5: a DAW picks the sounds.** MIDI Program Change loads a preset into the track the channel plays, as the PRESETS knob does ([MIDI](#midi-in)). **New in 2.2: patterns up to 128 steps.** The four tracks share 256 steps: one track can run 128, the others take what is left; OCT− / OCT+ page through 8 pages. **New in 2.1: a drum machine you can program.** Every one of the 16 drum sounds has eight macros on the FM-1 (TUNE, DECAY, SWEEP, BRIGHT, NOISE, LEVEL, PAN, CHOKE, plus its own reverb send). A real **noise operator** gives snares, claps and hats their hiss. Steps can **lock TUNE and DECAY** per hit. **MY KIT** keeps your own kit in flash and travels as a .syx, and the **dice** rolls a whole new kit from a seed you can roll again.
 
-> **Status: 3.5, a usable beta.** It builds, every host test passes, and it is installed and played on a real FM-1. Still open: a full check of the web editor against the device, and the CPU with all 14 DX7 voices sounding at once. Install at your own risk, and please [report](../../issues) what you find. See [Status](#status).
+> **Status: 4.0, a beta.** It builds and every host test passes; 3.5 is installed and played on a real FM-1, 4.0 (the second core, SLOOP 2.6 / 2.7) has not been on a device yet. Still open: 4.0 on the device (ABOUT must say *2 CORES*), a full check of the web editor against the device. Install at your own risk, and please [report](../../issues) what you find. See [Status](#status).
 
 ## Why sloopDX
 
@@ -32,7 +32,8 @@ sloopDX is my approach to combine both: **SLOOP's live workflow, with a DX7 insi
 ## Contents
 
 1. [Why sloopDX](#why-sloopdx)
-1. [From SLOOP 2.5 (new in 3.4)](#from-sloop-25-new-in-34)
+1. [From SLOOP 2.6 / 2.7 (new in 4.0)](#from-sloop-26--27-new-in-40)
+1. [From SLOOP 2.5 (3.4)](#from-sloop-25-34)
 1. [From SLOOP 2.4 (3.3)](#from-sloop-24-33)
 1. [From SLOOP 2.3](#from-sloop-23)
 2. [Screens](#screens)
@@ -55,7 +56,30 @@ sloopDX is my approach to combine both: **SLOOP's live workflow, with a DX7 insi
 
 ---
 
-## From SLOOP 2.5 (new in 3.4)
+## From SLOOP 2.6 / 2.7 (new in 4.0)
+
+sloopDX 4.0 takes from SLOOP 2.6 and 2.7 what fits next to its DX7 and its drums: above all the second core and the MIDI. None of it has been tried on a device in sloopDX yet.
+
+| | |
+| --- | --- |
+| **Two cores** | The sound is computed on both of the FM-1's processor cores (andrerezemini, SLOOP #111, on the dual-core start of Charles Vestal's X0X and keremimo's Melodee): the last synth part and the drums on the second core, the rest on the first, the same sound bit for bit. HOME menu → SYSTEM → **2ND CORE** OFF goes back to one core; ABOUT says *2 CORES*. At power-on the two supplies are raised to M-VAVE's own levels (after X0X 1.0.9). On the way the RAM went from 94 to 76 KB of 96: room again. |
+| **Each track on its own MIDI channel** | GLO → **MIDI**: CH1, CH2, CH3, CH4 (the drums), OFF or 1–16, in and out; GLO → **MIDI 2**: IN (NOTES, CLOCK, or one channel only: CH 1–16), OTHER (the channels no track has: the selected track, or nothing), OUT (KEYS / SEQ), BEND. Settings of the FM-1, kept through power-off and in the backup. |
+| **Sustain, pitch bend, Program Change** | CC 64 holds the notes you let go (recorded as heard); the wheel bends the track by up to BEND semitones (1–12); Program Change loads a sound, on the drum channel kit n. |
+| **MIDI LEARN** | GLO + F#3, turn a knob of the FM-1, move a knob of your controller — done. Up to 16 CCs, kept through power-off; HOME menu → SYSTEM → MIDI LEARN CLEAR forgets them. |
+| **Step entry from a MIDI keyboard** | On the STEP page your keyboard writes the cursor's step as the FM-1's keys do (a chord: the notes held together). |
+| **GLO → MIDI 3** | **FX CH**: the 27 punch-in effects from a controller (notes F3 … G5); **DR MAP** 1-16: the 16 drum sounds from any 16 notes in a row; **REMOTE**: the 14 buttons from CC 102 … 115; **CLOCK** OUT: the FM-1 as the clock master on USB. |
+| **Arp** | 15 modes: REPEAT, DNUP, UP+8, CONV, DIVG, PINKY, THUMB, WALK and CHORD after sloopDX's OMNI and FLW; **ORD** plays the notes in the order pressed. **KBD HOLD**: ARP 2 → HOLD ON with the arp OFF holds the notes you play (a pad, a drone). A sound loaded keeps the arp running; ARP SWG works with the sequencer stopped; a latched arp follows TRN, ROOT, SCALE and KEYS (#191). |
+| **Recording** | Overdub over held notes: a note recorded under a pad tied over the bar no longer cuts it. SEQ + a synth step + KNOB 2: its velocity (1–127). |
+| **27 punch-in effects** | Hold FX: the black keys are eleven more — KILL LOW / MID / HIGH, REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO, FADE OUT. **REV / ECHO THROW**: FX + OCT− / OCT+, every send full while held. |
+| **INSERT, LFO 2, ENV SYNC** | FX → INSERT on every track (the drum track too): SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR with a dry / wet MIX, next to sloopDX's DIST page. LFO → LFO 2: the LFO synced to the tempo, TRIG, POL. ENV DEST → ESYNC: ATK, DEC, REL as note values. |
+| **TEXTURE** | GLO → TEXTURE: a looping bed under the mix — VINYL, TAPE, RAIN, WIND, RADIO, ROOM — with level, tone, a slow breath over 1–16 bars, with the transport or always, pumped by the kick if you like. Kept with the project and each section. |
+| **Live drum mutes** | EDIT + a black key on the drum track: the white keys mute and unmute their sounds in the sequencer (nothing erased); the mode stays until a black key again. |
+| **The menu, in sections** | SCREEN, LIGHTS, AUDIO, SYSTEM; SELECT goes to the section, KNOB 1–4 set its rows. New: **KNOB ACCEL** (a fast turn sweeps wider), **USB RATE** (AUTO, 44.1, 48 kHz), **2ND CORE**, **MIDI LEARN CLEAR**. FACTORY RESET is on the ABOUT page now (OCT+ twice). |
+| **Smaller things** | Favourite sounds (PRESETS page, KNOB 4: right adds, left removes; up to 16 at the top of the list); SAVE → SECTION A–D with KNOB 2 **ERASE**; LEVEL and PAN glide instead of stepping (after JIANT FM); SELECT walks a family's pages and counts them; a look-ahead master limiter and no clicks when a sound is loaded over sounding notes; the delay's TIME gets 1/4D; Terminus Bold on the screen. |
+
+Not taken: SLOOP's REC QUANT off (it needs SLOOP's per-step nudges, which sloopDX does not have yet), the drums' SOUND page (sloopDX's lanes have TUNE and DECAY and six more), looping user samples (no sample engine here). The web editor's LIVE page, songs as files and the Theme page are planned for sloopDX's editor; the firmware already answers the LIVE page's command. Projects of 3.x load as they are (format 7 → 8); a project saved in 4.0 does not open in 3.x.
+
+## From SLOOP 2.5 (3.4)
 
 sloopDX 3.4 takes from SLOOP 2.5 what fits next to its DX7 and its drums. None of it has been tried on a device in sloopDX yet.
 
@@ -210,23 +234,26 @@ Colours, from the DX7's panel: **cyan** track 1 and KNOB 1, **light blue** 2, **
 
 ## The menu: settings of the FM-1
 
-Hold **HOME**. **PRESETS** moves, **KNOB 1** sets, **OCT+** steps round, **OCT−** closes. These are settings of the FM-1, not of a project: loading a project or NEW PROJECT does not change them, and the backup keeps them.
+Hold **HOME**. The menu has four sections: **SELECT** goes to the one before / after, **KNOB 1–4** set its rows (the knob's colour marks its row), **PRESETS** moves the cursor, **OCT+** steps the cursor's row round or opens it, **OCT−** closes. These are settings of the FM-1, not of a project: loading a project or NEW does not change them, and the backup keeps them.
 
-| Item | Choices | What it does |
-| --- | --- | --- |
-| **COLOR** | 5 palettes | the screen's colours |
-| **LOWCUT** | OFF / ON | a low cut for the small built-in speaker |
-| **ZOOM** | OFF / ON | a large readout of the value you turn |
-| **LIGHTS** | OFF / LOW / MID / HIGH | every button glows at that level; what is active stays at full light |
-| **KEYS** | OFF / C KEYS / WHITE KEYS | the C keys, or every white key, glow too |
-| **NOTES** | OFF / ON | the notes playing on a synth track light their keys, on every page and in every layer |
-| **USB AUDIO** | MASTER / FULL | the level of the USB audio input: follows the MASTER knob, or a fixed full level |
-| **USB SERIAL** | OFF / ON | the serial console on USB (for developers), taken at the next start (*RESTART* shows until then). OFF, the default: macOS 13–15 show the USB audio input (3.3) |
-| **HARDWARE CALIBRATION** | | the panel table, if a key or a knob answers wrongly |
-| **ABOUT** | | the version (*sloopDX 3.5*) and its build date, the credits |
-| **FACTORY RESET** | OCT+ twice | erases everything on the FM-1: the projects, the working project, the user presets, the 8 DX7 banks, MY KIT and the settings, then restarts as freshly installed. Stopped only; save a backup first (editor → Projects) if you want any of it back |
+| Section | Item | Choices | What it does |
+| --- | --- | --- | --- |
+| SCREEN | **COLOR** | 6 palettes (DX the default), your theme | the screen's colours |
+| | **ZOOM** | OFF / ON | a large readout of the value you turn |
+| | **KNOB ACCEL** | ON / OFF | 4.0: a fast turn sweeps wider, a slow one is one value a detent |
+| LIGHTS | **LIGHTS** | OFF / LOW / MID / HIGH | every button glows at that level; what is active stays at full light |
+| | **KEYS** | OFF / C KEYS / WHITE KEYS | the C keys, or every white key, glow too |
+| | **NOTES** | OFF / ON | the notes playing on a synth track light their keys, on every page and in every layer |
+| AUDIO | **SPEAKER LOWCUT** | OFF / ON | a low cut for the small built-in speaker |
+| | **USB AUDIO** | MASTER / FULL | the level of the USB audio input: follows the MASTER knob, or a fixed full level |
+| | **USB SERIAL** | OFF / ON | the serial console on USB (for developers), taken at the next start (*RESTART* shows until then). OFF, the default: macOS 13–15 show the USB audio input (3.3) |
+| | **USB RATE** | AUTO / 44.1 / 48 KHZ | 4.0: the rates the USB audio input offers, at the next start (for phones that record it distorted) |
+| SYSTEM | **2ND CORE** | ON / OFF | 4.0: the sound on both processor cores; OFF: one core (ON again: at the next power-on) |
+| | **HARDWARE CALIBRATION** | | the panel table, if a key or a knob answers wrongly |
+| | **MIDI LEARN CLEAR** | OCT+ | 4.0: forgets every learned CC |
+| | **ABOUT** | | the version (*sloopDX 4.0*), its build date, *2 CORES* or *1 CORE*, the credits. **FACTORY RESET** here: OCT+ twice erases everything on the FM-1 (the projects, the working project, the user presets, the 8 DX7 banks, MY KIT and the settings), then restarts as freshly installed. Stopped only; save a backup first (editor → Projects) if you want any of it back |
 
-Four more settings of the FM-1 live elsewhere: **MIDI**, **SYNC** and **IN** (GLO → SYSTEM: see [MIDI and USB audio](#midi-and-usb-audio)) and the REC screen's **mode** and **start**.
+More settings of the FM-1 live elsewhere: GLO → **MIDI**, **MIDI 2**, **MIDI 3** and **SYNC** (see [MIDI and USB audio](#midi-and-usb-audio)) and the REC screen's **mode** and **start**.
 
 ## MIDI and USB audio
 
@@ -239,21 +266,23 @@ sloopDX takes MIDI from two places at once:
 
 | MIDI channel | Plays |
 | --- | --- |
-| 1, 2, 3 | synth tracks 1, 2, 3 |
-| 10 | the drum track (the nearest of its 16 sounds; GLO → DRUMS → CH changes the channel) |
-| 4–16 | the selected track: set your keyboard to channel 4 and it follows ALGORITHM |
+| 1, 2, 3 | synth tracks 1, 2, 3 (4.0: GLO → MIDI → CH1, CH2, CH3 set any channel for each, or OFF) |
+| 10 | the drum track (the nearest of its 16 sounds; GLO → MIDI → CH4 changes the channel; MIDI 3 → DR MAP 1-16: 16 notes in a row) |
+| the others | the selected track: set your keyboard to channel 4 and it follows ALGORITHM (4.0: GLO → MIDI 2 → OTHER = OFF ignores them) |
 
-**Knobs (CCs, 3.4)** set the track the channel plays: 74 CUT, 71 RESO, 73 / 75 / 72 the ATK / DEC / REL macros, 7 level, 10 pan, 5 glide, 91 / 93 / 94 the reverb, chorus and delay sends; on the drum channel 7, 91, 94 are GLO → DRUMS LVL, REV, DLY and 10 the pan. Other CCs are ignored. **Program Change (3.5)** loads a preset into the track the channel plays, as the PRESETS knob: program 0 is 01 EPIANO 1, 0–19 the factory presets, 20–51 the voices of the DX7 bank in use, then your user presets (not on the drum channel).
+**Your own channels (4.0).** For an external sequencer with its own channels: GLO → **MIDI** sets each track's channel (two tracks never share one), GLO → **MIDI 2** the rest: **IN** (NOTES; CLOCK: the clock only; CH 1–16: that channel only, on the selected track), **OTHER**, **OUT**, **BEND**. **Sustain** (CC 64) holds the notes you let go; the **pitch wheel** bends by up to BEND semitones. **MIDI LEARN**: GLO + F#3, turn a knob of the FM-1, move one of your controller (up to 16; SYSTEM → MIDI LEARN CLEAR). On the STEP page a MIDI keyboard writes steps. GLO → **MIDI 3**: **FX CH** (the punch-in effects from notes F3 … G5 on that channel), **DR MAP**, **REMOTE** (CC 102 … 115 press the 14 buttons: FX SEL ENV LFO EDIT GLO HOME SAVE ARP SEQ PLAY REC OCT− OCT+), **CLOCK** OUT.
+
+**Knobs (CCs, 3.4)** set the track the channel plays: 74 CUT, 71 RESO, 73 / 75 / 72 the ATK / DEC / REL macros, 7 level, 10 pan, 5 glide, 91 / 93 / 94 the reverb, chorus and delay sends; on the drum channel 7, 91, 94 are GLO → DRUMS LVL, REV, DLY and 10 the pan. Other CCs are ignored. **Program Change (3.5)** loads a preset into the track the channel plays, as the PRESETS knob: program 0 is 01 EPIANO 1, 0–19 the factory presets, 20–51 the voices of the DX7 bank in use, then your user presets (the favourites are not counted); on the drum channel (4.0) program n is kit n.
 
 A USB keyboard plugged **straight into the FM-1** cannot work: both are USB devices, and a USB link needs a host (a computer, a phone, or a USB MIDI host box). Bluetooth MIDI is not supported: sloopDX, like Felucca, never switches the radio on.
 
 ### MIDI out
 
-The keys always go out on USB MIDI, each track on its channel (1–3, drums on 10). With GLO → SYSTEM → **MIDI** = **SEQ** (3.3) the sequencer goes out too: the steps, the arp, the rolls, the OMNI chords and FLW, so another synth plays along or a DAW records the notes. Notes that come in are never sent back (no MIDI loop). STOP, or MIDI back to KEYS, ends every note it sent. GLO → SYSTEM → **IN** = **CLOCK** ignores the notes that come in and keeps the clock.
+The keys always go out on USB MIDI, each track on its channel (1–3, drums on 10; 4.0: GLO → MIDI). With GLO → MIDI 2 (or SYSTEM) → **OUT** = **SEQ** (3.3) the sequencer goes out too: the steps, the arp, the rolls, the OMNI chords and FLW, so another synth plays along or a DAW records the notes. Notes that come in are never sent back (no MIDI loop). STOP, or MIDI back to KEYS, ends every note it sent. GLO → SYSTEM → **IN** = **CLOCK** ignores the notes that come in and keeps the clock.
 
 ### MIDI clock in
 
-GLO → SYSTEM → **SYNC** = **USB** or **TRS** (INT: sloopDX's own tempo). START plays from the top, CONTINUE carries on, STOP stops; the tempo follows the master and the steps follow its 24 pulses a beat, so sloopDX never drifts. When the clock stops for half a second, PLAY on the FM-1 plays at its own tempo again.
+GLO → SYSTEM → **SYNC** = **USB** or **TRS** (INT: sloopDX's own tempo). START plays from the top, CONTINUE carries on, STOP stops; the tempo follows the master and the steps follow its 24 pulses a beat, so sloopDX never drifts. When the clock stops for half a second, PLAY on the FM-1 plays at its own tempo again. **Clock out (4.0):** GLO → MIDI 3 → CLOCK = OUT sends the clock and START / STOP on USB while SYNC is INT: the FM-1 is the master.
 
 ### USB audio: record the FM-1 on a computer
 
@@ -277,7 +306,7 @@ Open it from the [installer page](https://dx7.designburgapps.com/) (or the [edit
 
 <p align="center"><img src="assets/screens/editor-backup.png" alt="SLOOP web editor: projects and backup" width="560"></p>
 
-The protocol is documented in [web/EDITOR_PROTOCOL.md](web/EDITOR_PROTOCOL.md) (v9: SLOOP 2.3's backup, the bank upload, voice editing and the 8 banks).
+The protocol is documented in [web/EDITOR_PROTOCOL.md](web/EDITOR_PROTOCOL.md) (v12: SLOOP 2.3's backup, the bank upload, voice editing, the 8 banks, MY KIT, 128 steps; 4.0: the MIDI settings and your theme in the backup, SLOOP 2.7's LIVE command).
 
 ## Compatibility
 
@@ -362,8 +391,10 @@ Install the resulting `.fwsc` with `python tools/fm1_install.py build/felucca.fw
 - **[Felucca](https://github.com/hugelton/Felucca)** by **Leo Kuroshita** (@kurogedelic) / **Hügelton Instruments** — the firmware SLOOP is built on, and the USB audio input, the knob reading and many fixes of Felucca 1.0 / 1.0.1 that came in with SLOOP 2.3.
 - **DX7 core:** the msfa engine from [Dexed](https://github.com/asb2m10/dexed) (Apache-2.0; © 2012 Google, 2016–2025 Pascal Gauthier).
 - **[Baud Girl](https://baudgirl.com/work/FM-1+VA)** (Madeline) — FM-1+VA showed how to edit FM on the FM-1: a list, SELECT for the row, ALGORITHM for the value. sloopDX's voice list follows that idea (no code: Baud Girl's firmware is closed source).
-- **@renebohne** — the played-note key lights (SLOOP pull request #11). **ChanceTheMaker** and **keremimo** — the TRS MIDI input fix (Felucca Salt) and contributions to the MIDI clock.
-- Font: Terminus (SIL OFL 1.1). Icons: Fukiai (MIT, Hügelton Instruments). Interface ideas after teenage engineering's pocket operators and EP-133, Elektron's step entry and Akai's MPC (swing, note repeat, erase).
+- **@renebohne** — the played-note key lights (SLOOP pull request #11), Program Change (Felucca PR #179), CC 74 on the cutoff (SLOOP #71). **ChanceTheMaker** and **keremimo** — the TRS MIDI input fix (Felucca Salt) and contributions to the MIDI clock.
+- **The second core (4.0):** **Andre Rezemini** (andrerezemini, SLOOP pull request #111: the render split, the RAM below the RAM region), on the dual-core start of **Charles Vestal**'s [X0X](https://github.com/charlesvestal/fm1-x0x) (and its supply levels, X0X 1.0.9) and **Kerem Kilic** (keremimo)'s [Melodee](https://github.com/keremimo/melodee).
+- **From SLOOP 2.6 / 2.7 (4.0):** INSERT, LFO SYNC / TRIG / POL, ENV SYNC, MIDI LEARN, the live drum mutes, the 1/4D delay, the THROWs and the arp modes after **Felucca** 1.4 / 1.5 / 1.5.1 (Leo Kuroshita); the knob acceleration and the LEVEL / PAN glide after **JIANT FM** by juanjiant-bit.
+- Font: Terminus and Terminus Bold (SIL OFL 1.1). Icons: Fukiai (MIT, Hügelton Instruments). Interface ideas after teenage engineering's pocket operators and EP-133, Elektron's step entry and Akai's MPC (swing, note repeat, erase).
 
 ## Licence
 

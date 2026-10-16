@@ -11,8 +11,14 @@ SLOOP 2.2 as forked. Open work: TODO.md. First build on a machine: START.md.
 - Keep the SLOOP / Felucca / Dexed credits (about page, README, LICENSING).
 - Target: JieLi AC791N, pi32v2, no FPU, 44.1 kHz, CTL = 32-sample blocks. Integer DSP only; tables
   are generated on the host (`tools/gen_dx7_tables.c`, committed as `firmware/src/dx7_tables.h`).
-- RAM: .data + .bss ≤ 96 KB (checked by `tools/build.py`). Voice budget: 8 voices over 3 parts,
-  plus NDRUM 6 drum voices.
+- RAM: .data + .bss ≤ 96 KB (checked by `tools/build.py`); since 4.0 big buffers go to `.lowram` (29.5 KB of SRAM
+  below the RAM region, `app.ld`; reverb lines, the render split's scratch, core 1's stacks). Voice budget: 8 voices
+  over 3 parts, plus NDRUM 6 drum voices.
+- Two cores (4.0, SLOOP 2.7 / andrerezemini #111): `fx.c mix_units` renders the parts and the drums as units, core 1
+  (`cpu1.c`, `hal/fm1_cpu1.*`) takes the last part and the drums (`units_split`); bit-exact by construction. Render
+  state must be per part or per core: no static scratch in the render path (`dx7_core.c dx_compute_ext` keeps its
+  operator buses on the stack; the drums' blocks are static in `.lowram`: one unit). Tests: `tests/mix_split_test.c`,
+  `tests/cpu1_modes.sh` (every mode of the host double, TSan).
 
 ## Where things are
 
@@ -22,7 +28,7 @@ SLOOP 2.2 as forked. Open work: TODO.md. First build on a machine: START.md.
   are renumbered on load: `core.h DX_VOICE_FROM_V1`), a low-pass per voice (CUT `P_E6`, RESO `P_E7`), user bank `dx_user` (packed .syx,
   `dx_bank_begin/write/end` for the editor's pieces, `dx_bank_load`, `dx_unpack`, `dx_sanitize`), macros
   BRITE/ATK/DEC/REL/FDBK, DC blocker. Flash side of the bank: `project.c` (`dx_bank_boot/store/erase`,
-  storage objects `OBJ_DXBANK0/1` at 0xA0000). Editor cmds 34-38 in `editor.c` (protocol v6).
+  storage objects `OBJ_DXBANK0/1` at 0xA0000). Editor cmds 34-38 in `editor.c` (protocol v6; 4.0: v12, LIVE = 77 `editor_live.c`).
 - `firmware/src/drums.c`: FM drum track, 16 lanes, kits in `FM_KITS` (DX KIT, 808 FM, ELECTRO, METAL: each its own voices, `DX_KIT_VOICE`; the USER kit went in 1.9).
   The voices sum into a stereo bus (lane pan) -> `drums_bus` (DRIVE = the drum track's `P_DIST`, COMP = its `P_CHOR`;
   kit page KNOB 3 / 4) -> each lane's reverb send. Per lane 8 macros + REV (`dext.m`, `core.h drum_ext_t`, saved in the
@@ -31,10 +37,17 @@ SLOOP 2.2 as forked. Open work: TODO.md. First build on a machine: START.md.
   screen pages grid / kit / lane (`ui_studio.c`), locks in the SEQ layer (`ui_layers.c`). Editor protocol v10.
 - `firmware/src/dx7_bank.h`: generated voices + `DX_DRUM[]` table (`tools/gen_dx7_bank.py`).
 - Steps (2.2): `NSTEP` 128 a track, one pool of `STEP_POOL` 256 for the four (`core.h slen_room / slen_set /
-  slen_fit_all`: every LEN change goes through them); projects (format 7 since 2.7, format 6 read) store each track's LEN steps in order
+  slen_fit_all`: every LEN change goes through them); projects (format 8 since 4.0, 7 and 6 read) store each track's LEN steps in order
   (`project.c proj_capture / proj_apply`, older formats through format 5: `proj_from_v5`). INFO sends 128 as 0.
 - OMNI (2.5): ARP MODE 6 = chord harp (black keys chords, white keys strings), 7 = FLW (a pattern follows the
   chord's root): `seq.c omni_*`, `core.h AM_OMNI / AM_FLW / ARP_RUNS`, test `tests/omni_test.c`.
+- 4.0 merged SLOOP 2.6 / 2.7 (3-way merge with SLOOP 2.5 `fa9ce57` as the base; upstream `ba54ba5`): MIDI channels per
+  track (GLO > MIDI, MIDI 2, MIDI 3: settings of the FM-1 in the settings object's MIDI part, `project.c midi_part_*`),
+  sustain, bend, Program Change (`ui.c midi_pc_take`, drums: kit n), MIDI LEARN (`seq.c ml_tab`), FX CH, DR MAP,
+  REMOTE, CLOCK OUT, 15 arp modes (`seq.c AM_*`: SLOOP's after our OMNI 6 / FLW 7), KBD HOLD, 27 punch-ins, THROWs,
+  INSERT / LFO 2 / ENV SYNC (`P_ITYPE`..`P_LPOL`), TEXTURE (synth sources only), live drum mutes, favourites, theme,
+  sectioned menu (FACTORY RESET on ABOUT), look-ahead limiter, Terminus Bold. Not taken: locks / micro / fills
+  (so no REC QUANT off), the drums' SOUND page, P_TFLT / STRUM / VLEAD / ANALOG filter, samples. Projects: format 8.
 - Effect pages (2.7): one page per effect (`params.c PAGES`, scope `SC_MIX`: a slot with `PG_G` is a global). New
   track params `P_DTONE / P_DTYPE / P_DMIX` (DIST in `fx.c track_dist`), globals `G_CMIX`, `G_RPRE` (`fx_buses`).
   New common params go before P_E0 and need a new project format (`project.c`: freeze the old one, map by count).
@@ -45,7 +58,7 @@ SLOOP 2.2 as forked. Open work: TODO.md. First build on a machine: START.md.
 ## Build and test
 
 - Firmware: `./build.sh` (needs the JieLi toolchain `tools/get_toolchain.sh` and the AC79 SDK, see
-  BUILDING.md). Builds: RAM about 94 KB of 96 (3.4). Syntax-only without the toolchain:
+  BUILDING.md). Builds: RAM about 76 KB of 96, lowram 23 of 29.5 (4.0). Syntax-only without the toolchain:
   `cc -fsyntax-only -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -DFELUCCA_ID='"FM-1_909"' firmware/src/felucca.c`
 - Generated headers: `python3 tools/build.py` step `generate()`, or by hand
   `python3 tools/gen_logo.py build/gen/sloopdx_logo.h` etc. (`build/gen/` is needed by the host tests).

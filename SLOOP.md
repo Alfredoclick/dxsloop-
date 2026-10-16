@@ -1,12 +1,24 @@
 <p align="center"><img src="assets/logo/sloopdx-logo.png" alt="sloopDX" width="440"></p>
 
-# sloopDX 3.5
+# sloopDX 4.0
 
-**SLOOP as a pure DX7 FM synth, for the M-VAVE FM-1.** Four tracks — three synth parts and a drum machine with 16 sounds on the white keys — one engine: a six-operator DX7 voice (Dexed's msfa core, ported to integer C and within 1 LSB of Dexed against Dexed), 20 factory voices and your own DX7 banks (.syx, 32 voices), a low-pass behind each voice, four FM drum kits made with the same engine and one of your own (every sound with eight macros, a noise operator, step locks, the dice; drive and compression on the drum bus), ghost notes and ratchets, note repeat, one-key chords, 16 punch-in effects, a vinyl / sidechain / DJ-filter master, and a teenage-engineering-style screen that always shows what your hands can do next. No factory patterns, nothing to load: everything you hear, you play.
+**SLOOP as a pure DX7 FM synth, for the M-VAVE FM-1.** Four tracks — three synth parts and a drum machine with 16 sounds on the white keys — one engine: a six-operator DX7 voice (Dexed's msfa core, ported to integer C and within 1 LSB of Dexed against Dexed), 20 factory voices and your own DX7 banks (.syx, 32 voices), a low-pass behind each voice, four FM drum kits made with the same engine and one of your own (every sound with eight macros, a noise operator, step locks, the dice; drive and compression on the drum bus), ghost notes and ratchets, note repeat, one-key chords, 15 arp modes and KBD HOLD, 27 punch-in effects, an INSERT on every track, a vinyl / sidechain / DJ-filter master, and a teenage-engineering-style screen that always shows what your hands can do next. No factory patterns, nothing to load: everything you hear, you play.
 
 sloopDX is free and open source (GPL-3.0), a fork of [SLOOP](https://github.com/isod89/sloop-fm1) by isod89, which is based on [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita / Hügelton Instruments. This manual is based on SLOOP's manual: the workflow is SLOOP's, the sound is the DX7's.
 
-> **Status:** 3.5, a usable beta: it builds, the host tests pass, and it is installed and played on a real FM-1; the web editor against the device and the CPU with every voice sounding are still being checked. Install at your own risk.
+> **Status:** 4.0, a beta: it builds and the host tests pass; 3.5 is installed and played on a real FM-1, 4.0 (both processor cores, SLOOP 2.6 / 2.7) not yet. Install at your own risk.
+
+### From SLOOP 2.6 / 2.7 (4.0)
+
+- **Both processor cores.** The last synth part and the drums are computed on the FM-1's second core (andrerezemini, SLOOP #111, after X0X and Melodee): about twice the room, the same sound. HOME menu → SYSTEM → **2ND CORE** OFF goes back to one core; ABOUT says *2 CORES*.
+- **MIDI, track by track.** GLO → **MIDI**: each track's channel (CH1..CH3, CH4 the drums; OFF or 1–16, in and out). GLO → **MIDI 2**: IN (NOTES, CLOCK, CH 1–16 only), OTHER (SEL / OFF), OUT (KEYS / SEQ), BEND (1–12). GLO → **MIDI 3**: FX CH, DR MAP, REMOTE, CLOCK OUT. Sustain (CC 64), pitch bend, Program Change (the drum channel: kit n), step entry from a keyboard on the STEP page. See [MIDI keyboards](#midi-keyboards).
+- **MIDI LEARN.** GLO + F#3 (the top line says *LEARN*), turn a knob of the FM-1, move one of your controller; more if you like; GLO + F#3 again to finish. Up to 16, kept through power-off; HOME menu → SYSTEM → MIDI LEARN CLEAR.
+- **Arp:** REPEAT, DNUP, UP+8, CONV, DIVG, PINKY, THUMB, WALK and CHORD after OMNI and FLW; ORD in the order pressed. **KBD HOLD**: ARP 2 → HOLD ON with the arp OFF holds the notes you play. A sound loaded keeps the arp running; ARP SWG works stopped.
+- **Punch-ins on the black keys** (27 in all) and **REV / ECHO THROW** (FX + OCT− / OCT+): see [Punch-in effects](#punch-in-effects).
+- **FX → INSERT** (every track, the drums too): SOFT HARD FOLD FUZZ CRUSH PHASR FLANG CHOR, A B C and a MIX. **LFO → LFO 2**: SYNC to the tempo, TRIG NOTE / FREE, POL BI / UNI. **ENV DEST → ESYNC**: ATK DEC REL as note values.
+- **GLO → TEXTURE**: VINYL, TAPE, RAIN, WIND, RADIO, ROOM under the mix (LEVEL, TONE, MOVE over RATE, WHEN, DUCK), kept with each section.
+- **Live drum mutes:** EDIT + a black key on the drum track, then the white keys mute / unmute their sounds (nothing erased); a black key again goes back to erasing.
+- **Overdub over held notes**, **a synth step's velocity** (SEQ + the step + KNOB 2), **favourite sounds** (PRESETS page, KNOB 4), **SAVE → SECTION** A–D with **ERASE** (KNOB 2), **KNOB ACCEL**, LEVEL and PAN glide, **USB RATE**, the HOME menu in sections (FACTORY RESET on ABOUT), a look-ahead limiter, Terminus Bold.
 
 ### From SLOOP 2.5 (3.4)
 
@@ -270,7 +282,7 @@ On the whole mix, after the tracks' sends (FX + KNOB 1–3, or GLO → MASTER):
 
 ## Punch-in effects
 
-Hold **FX**, then hold a white key — the 16 white keys from the lowest F to the highest G. The effect runs on the whole mix while the key is held and lets go cleanly when you release it. Loops and the gate are locked to the tempo and start on the grid.
+Hold **FX**, then hold a key — the 16 white keys from the lowest F to the highest G, and (4.0) the 11 black keys. The effect runs on the whole mix while the key is held and lets go cleanly when you release it. Loops and the gate are locked to the tempo and start on the grid. **REV THROW / ECHO THROW** (4.0): FX + OCT− (reverb) or OCT+ (echo), every send full while held.
 
 | Key | Effect | Key | Effect |
 | --- | --- | --- | --- |
@@ -282,6 +294,17 @@ Hold **FX**, then hold a white key — the 16 white keys from the lowest F to th
 | 6 | reverse | 14 | gate 1/16 |
 | 7 | tape stop | 15 | echo (dotted 1/8) |
 | 8 | half speed | 16 | tape wobble |
+
+The black keys (4.0, from SLOOP 2.6), from the lowest F# to the highest:
+
+| Key | Effect | Key | Effect |
+| --- | --- | --- | --- |
+| F#3 | KILL LOW (DJ style, below ~250 Hz) | F#4 | FLANGER |
+| G#3 | KILL MID | G#4 | AUTO-PAN |
+| A#3 | KILL HIGH (above ~2.5 kHz) | A#4 | FREEZE: the mix held in the reverb |
+| C#4 | REWIND | C#5 | LOOP 8T |
+| D#4 | OCT UP | D#5 | MONO |
+| | | F#5 | FADE OUT over two beats |
 
 ## Screens
 
@@ -466,11 +489,13 @@ sloopDX takes MIDI from two places at once:
 
 | MIDI channel | Plays |
 | --- | --- |
-| 1, 2, 3 | synth tracks 1, 2, 3 |
-| 10 | the drum track (the nearest of its 16 sounds; GLO → DRUMS → CH changes the channel) |
-| 4–16 | the selected track: set your keyboard to channel 4 and it follows ALGORITHM |
+| 1, 2, 3 | synth tracks 1, 2, 3 (4.0: GLO → MIDI → CH1..CH3, any channel or OFF) |
+| 10 | the drum track (the nearest of its 16 sounds; GLO → MIDI → CH4 changes the channel; MIDI 3 → DR MAP 1-16: any 16 notes in a row) |
+| the others | the selected track: set your keyboard to channel 4 and it follows ALGORITHM (MIDI 2 → OTHER = OFF: ignored) |
 
-**Knobs (CCs, 3.4)** set the track the channel plays, as its knob would: 74 CUT, 71 RESO, 73 / 75 / 72 the ATK / DEC / REL macros, 7 LEVEL, 10 PAN, 5 GLIDE, 91 / 93 / 94 the reverb, chorus and delay sends; on the drum channel 7, 91, 94 are GLO → DRUMS LVL, REV, DLY and 10 its PAN. Other CCs are ignored, and all of them with IN = CLOCK. **Program Change (3.5)** loads a preset into the track the channel plays, as the PRESETS knob: program 0 is 01 EPIANO 1, 0–19 the factory presets, 20–51 the voices of the DX7 bank in use, then the user presets; not on the drum channel, nothing beyond the list.
+**4.0 (SLOOP 2.6 / 2.7):** GLO → **MIDI 2** → IN = **CH n** answers that channel only, on the selected track. The **sustain pedal** (CC 64) holds the notes you let go (recorded as heard); the **pitch wheel** bends by up to BEND semitones (MIDI 2 → BEND). On the STEP page a MIDI keyboard writes the cursor's step (a chord: the notes held together). **MIDI LEARN**: GLO + F#3. GLO → **MIDI 3**: **FX CH** plays the 27 punch-in effects from the notes F3 … G5 on that channel, **REMOTE** presses the 14 buttons from CC 102 … 115 (FX SEL ENV LFO EDIT GLO HOME SAVE ARP SEQ PLAY REC OCT− OCT+; 64 and above down), **CLOCK** = OUT sends the MIDI clock and START / STOP on USB while SYNC is INT.
+
+**Knobs (CCs, 3.4)** set the track the channel plays, as its knob would: 74 CUT, 71 RESO, 73 / 75 / 72 the ATK / DEC / REL macros, 7 LEVEL, 10 PAN, 5 GLIDE, 91 / 93 / 94 the reverb, chorus and delay sends; on the drum channel 7, 91, 94 are GLO → DRUMS LVL, REV, DLY and 10 its PAN. Other CCs are ignored, and all of them with IN = CLOCK. **Program Change (3.5)** loads a preset into the track the channel plays, as the PRESETS knob: program 0 is 01 EPIANO 1, 0–19 the factory presets, 20–51 the voices of the DX7 bank in use, then the user presets (not the favourites); on the drum channel (4.0) kit n; nothing beyond the list.
 
 **MIDI clock in:** GLO → SYSTEM → **SYNC** = **USB** or **TRS** (INT: sloopDX's own tempo). START plays from the top, CONTINUE carries on where it stopped, STOP stops; the tempo (BPM) follows the master, and the steps follow its 24 pulses a beat, so sloopDX cannot drift away from it. When the clock stops for half a second, PLAY on the FM-1 plays at its own tempo again. SYNC is a setting of the FM-1: it stays when you load a project.
 

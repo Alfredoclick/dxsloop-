@@ -6,7 +6,7 @@ static void draw_menu(void);
 static uint32_t str_hash(uint32_t h, const char *s);
 
 /* --------------------------------------------------------- drawing --- */
-static int is_eng_name(const char *s)                 /* one of the ENGINES[]->name strings */
+UI_SMALL static int is_eng_name(const char *s)                 /* one of the ENGINES[]->name strings */
 {
     uint32_t e;
     for (e = 0; e < NENGINES; e++)
@@ -16,20 +16,20 @@ static int is_eng_name(const char *s)                 /* one of the ENGINES[]->n
 }
 
 /* at most 5 characters, and no wider than maxw */
-static void fit(char *d, const char *src, const felucca_font_t *f, int32_t maxw)
+UI_SMALL static void fit(char *d, const char *src, const felucca_font_t *f, int32_t maxw)
 {
     str_cpy(d, src, is_eng_name(src) ? 8 : 6);           /* engine names are kept whole */
     while (d[0] && text_w(f, d) > maxw)
         d[str_len(d) - 1u] = 0;
 }
 
-static int32_t batt_level(void)                         /* ADC ch3 thresholds */
+UI_SMALL static int32_t batt_level(void)                         /* ADC ch3 thresholds */
 {
     return song.batt_raw >= 591 ? 3 : song.batt_raw >= 561 ? 2 : song.batt_raw >= 531 ? 1 : 0;
 }
 /* charging (a USB host powers us; there is no charger status line): bars fill 1, 2, 3
  * every 0.6 s, so the header is redrawn twice a second at most; else the level */
-static int32_t batt_shown(void)
+UI_SMALL static int32_t batt_shown(void)
 {
     if (usb.config && !usb.suspended)
         return 1 + (int32_t)((fm1_ms / 600u) % 3u);
@@ -37,7 +37,7 @@ static int32_t batt_shown(void)
 }
 
 /* top bar: transport, BPM, octave | USB, battery, CPU; messages replace it */
-static void draw_head(void)
+UI_SMALL static void draw_head(void)
 {
     char b[16];
     uint32_t i;
@@ -45,7 +45,7 @@ static void draw_head(void)
     uint32_t rec = (song.rec >> song.sel) & 1u ? 2u : song.rec != 0u;   /* 2 the selected track armed, 1 another */
     uint32_t sig = (uint32_t)song.playing * 3u + rec * 5u + (uint32_t)(song.octave + 8) * 11u + song.sel * 13131u +
                    (ui.msg_t ? str_hash(7u, ui.msg) : 0u) + (uint32_t)song.g[G_BPM] * 101u + (ui.bpm_t != 0) * 31u +
-                   (uint32_t)batt_shown() * 7777u + (usb.config && !usb.suspended) * 99991u;
+                   (uint32_t)batt_shown() * 7777u + (usb.config && !usb.suspended) * 99991u + mlu.on * 7919u;
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
@@ -70,7 +70,9 @@ static void draw_head(void)
         x += 14;
     }
     x = cv_text(x, 1, &FONT_S, b, ui.bpm_t ? C_WHITE : C_HI);   /* white while SELECT turns it */
-    if (song.octave) {
+    if (mlu.on) {                                     /* MIDI LEARN on (2.6, GLO + F#3): in the octave's place */
+        cv_text(x + 12, 1, &FONT_S, "LEARN", C_AMB);
+    } else if (song.octave) {
         str_cpy(b, song.octave > 0 ? "+" : "", 4);
         fmt_int(b + str_len(b), song.octave);
         cv_text(x + 12, 1, &FONT_S, "OCT", C_GRAY);
@@ -105,7 +107,7 @@ static void draw_head(void)
 }
 /* full redraw: the strips (head, columns, graph, foot) cover the rest, so only
  * the space between them is cleared, then the rules are drawn */
-static void draw_frame(void)
+UI_SMALL static void draw_frame(void)
 {
     uint32_t i;
     lcd_fill(0, H_HEAD, 240, Y_LABEL - H_HEAD, C_BLACK);
@@ -122,7 +124,7 @@ static void draw_frame(void)
 /* one column: [icon] LABEL / value unit / gauge, redrawn only when it changed.
  * ratio: 0..1000 for the gauge, -1 = no gauge. icon: ICON_* (icons.c), ICON_AUTO = by label */
 #define LABEL_X (FELUCCA_ICONS ? ICON_CELL + ICON_GAP : 0)
-static void draw_column(uint32_t c, const char *label, const char *val, const char *unit, uint16_t vc,
+UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val, const char *unit, uint16_t vc,
                         int32_t ratio, uint32_t icon)
 {
     char l[8], v[8], u[8], key[32];
@@ -171,7 +173,7 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
 /* Matches voice.c: attack is linear, decay and release are exponential
  * (env += (target - env) * k each tick, ~99 % after the set time). Time
  * axis is the parameter value (the times themselves are exponential). */
-static void graph_adsr(const track_t *t, uint16_t c)
+UI_SMALL static void graph_adsr(const track_t *t, uint16_t c)
 {
     int32_t a = 4 + t->p[P_ATK] * 50 / 127, d = 6 + t->p[P_DEC] * 50 / 127, r = 6 + t->p[P_REL] * 60 / 127;
     int32_t top = 8, bot = 90, sus = t->p[P_SUS] * 1000 / 127;          /* 0..1000 */
@@ -203,7 +205,7 @@ static void graph_adsr(const track_t *t, uint16_t c)
 #undef EGY
 }
 
-static void graph_lfo(const track_t *t, uint16_t c)
+UI_SMALL static void graph_lfo(const track_t *t, uint16_t c)
 {
     int32_t x, py = 50;
     uint32_t ph = (uint32_t)t->p[P_LPHASE] << 25;
@@ -218,7 +220,7 @@ static void graph_lfo(const track_t *t, uint16_t c)
     cv_line(0, 50, 239, 50, C_LINE);
 }
 
-static void graph_steps(const track_t *t, uint16_t c)
+UI_SMALL static void graph_steps(const track_t *t, uint16_t c)
 {
     uint32_t i, len = (uint32_t)t->p[P_SLEN];
     for (i = 0; i < NSTEP; i++) {                    /* 4 rows of 16 thin bars */
@@ -239,7 +241,7 @@ static void graph_steps(const track_t *t, uint16_t c)
     }
 }
 /* STEP page: the cursor's 16-step bank as a little piano roll */
-static void graph_roll(const track_t *t, uint16_t c)
+UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
 {
     uint32_t i, j, len = (uint32_t)t->p[P_SLEN], base = ui.bank * 16u;
     int32_t lo = 127, hi = 0, prev_y = -1;
@@ -285,7 +287,7 @@ static void graph_roll(const track_t *t, uint16_t c)
             cv_line(x + 11, prev_y, x + 17, prev_y + 2, c);
     }
 }
-static void graph_scale(const track_t *t, uint16_t c)
+UI_SMALL static void graph_scale(const track_t *t, uint16_t c)
 {
     static const uint8_t BLACK[12] = {0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0};
     uint32_t i, mask = scale_mask(t);
@@ -299,7 +301,7 @@ static void graph_scale(const track_t *t, uint16_t c)
 }
 
 /* SENDS page: the track's four as dials in a row, KNOB 1..4 (DIST is its drive: 0 = off) */
-static void graph_sends(const track_t *t)
+UI_SMALL static void graph_sends(const track_t *t)
 {
     uint32_t i;
     for (i = 0; i < 4u; i++) {
@@ -311,7 +313,7 @@ static void graph_sends(const track_t *t)
 /* SLICER page: the pattern's 16 steps, a 'x' step a full bar; a '.' step: GATE a bar as high as
  * it stays open (DEPTH), STUT hatched (it repeats the last 'x'); the step playing underlined.
  * Grey when the SLICER is OFF. */
-static void graph_slicer(const track_t *t, uint16_t c)
+UI_SMALL static void graph_slicer(const track_t *t, uint16_t c)
 {
     uint32_t i, pat = sl_pattern(t), mode = (uint32_t)t->p[P_SLCR], cur = sl[t - trk].idx;
     int32_t open = 70 - t->p[P_SLDEPTH] * 70 / 127;      /* px a closed GATE step keeps */
@@ -332,7 +334,7 @@ static void graph_slicer(const track_t *t, uint16_t c)
             cv_rect(x, 85, 11, 3, C_WHITE);
     }
 }
-static uint32_t steps_hash(const track_t *t)
+UI_SMALL static uint32_t steps_hash(const track_t *t)
 {
     uint32_t h = 2166136261u, i;
     for (i = 0; i < NSTEP; i++) {
@@ -343,14 +345,14 @@ static uint32_t steps_hash(const track_t *t)
     return h;
 }
 
-static uint32_t str_hash(uint32_t h, const char *s)
+UI_SMALL static uint32_t str_hash(uint32_t h, const char *s)
 {
     while (*s)
         h = (h ^ (uint8_t)*s++) * 16777619u;
     return h;
 }
 
-static uint32_t graph_signature(void)
+UI_SMALL static uint32_t graph_signature(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
@@ -363,6 +365,10 @@ static uint32_t graph_signature(void)
     for (i = 0; i < P_COUNT; i++)
         h = (h ^ (uint32_t)t->p[i]) * 16777619u;
     h ^= (uint32_t)TSEL->preset * 7u + (uint32_t)song.g[G_SLOT] * 13u + TSEL->user * 257u + up_gen * 7919u + ui.uslot * 104729u;
+    {   /* (2.7) the favourites: the PRESETS list and its FAV column */
+        uint32_t q;
+        for (q = 0; q < FAV_N; q++) h = h * 31u + fav[q];
+    }
     if (pg->graph == GR_SLCR && t->p[P_SLCR])        /* the SLICER's step playing */
         h ^= (sl[song.sel].idx + 1u) * 2654435761u;
     if (pg->graph == GR_SLOTS)                       /* (a checksum over each slot) */
@@ -377,7 +383,7 @@ static uint32_t graph_signature(void)
     return h;
 }
 /* preset browser: the list by kind (ui.c BANK), the current one in white */
-static void graph_browse(void)
+UI_SMALL static void graph_browse(void)
 {
     uint32_t total, cur = preset_pos(&total), e, k;
     int32_t row;
@@ -413,7 +419,7 @@ static void graph_browse(void)
 }
 
 /* user preset slots around the selected one: "U07  NAME" / EMPTY, the selected one in white */
-static void graph_user(void)
+UI_SMALL static void graph_user(void)
 {
     int32_t row, first = clamp((int32_t)ui.uslot - 3, 0, UP_SLOTS - 7);
     for (row = 0; row < 7; row++) {
@@ -433,15 +439,15 @@ static void graph_user(void)
     }
 }
 
-/* project slots: used / empty, the selected one in white */
-static void graph_slots(void)
+/* the sections A..D (the four slots): used / empty, the selected one in white */
+UI_SMALL static void graph_slots(void)
 {
     uint32_t i;
     for (i = 0; i < 4u; i++) {
         int32_t y = 8 + (int32_t)i * 26;
         char b[4];
         int sel = (int32_t)i + 1 == song.g[G_SLOT];
-        b[0] = (char)('1' + i);
+        b[0] = (char)('A' + i);
         b[1] = 0;
         if (sel)
             cv_rect(4, y + 6, 3, 3, C_WHITE);
@@ -465,7 +471,7 @@ static struct {
     uint8_t meter[NTRK];
 } ts;
 
-static int32_t meter_px(int32_t a)                   /* |sample| (Q15) -> px: 6 dB = TS_H / 10 */
+UI_SMALL static int32_t meter_px(int32_t a)                   /* |sample| (Q15) -> px: 6 dB = TS_H / 10 */
 {
     int32_t lg = 0, v;
     if (a < 64)
@@ -476,14 +482,14 @@ static int32_t meter_px(int32_t a)                   /* |sample| (Q15) -> px: 6 
     return clamp((v - 48) * (TS_H - 2) / 80, 0, TS_H - 2);
 }
 
-static uint32_t trk_level(uint32_t c)                /* LEVEL 0..127 (the drum track: GLO > DRUMS LEVEL) */
+UI_SMALL static uint32_t trk_level(uint32_t c)                /* LEVEL 0..127 (the drum track: GLO > DRUMS LEVEL) */
 {
     return (uint32_t)(c == TRK_DRUM ? song.g[G_DRLVL] : trk[c].p[P_LEVEL]) & 127u;
 }
 
 /* the voice a DX7 part plays, numbered as in its VOICE list: 01..20 factory, 21..52 the user bank ("37 BRASS 1");
  * it follows VOICE (the list, the editor), not only the preset that was loaded */
-static void dx_voice_label(const track_t *t, char *b, uint32_t n)
+UI_SMALL static void dx_voice_label(const track_t *t, char *b, uint32_t n)
 {
     uint32_t v = (uint32_t)t->p[P_E0] % DX_NVOICES;
     b[0] = (char)('0' + (v + 1u) / 10u);
@@ -493,7 +499,7 @@ static void dx_voice_label(const track_t *t, char *b, uint32_t n)
     str_cpy(b + 3, dx_names[v], n - 3u);
 }
 
-static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b holds 13 */
+UI_SMALL static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b holds 13 */
 {
     const track_t *t = &trk[c];
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
@@ -507,7 +513,7 @@ static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b hol
         str_cpy(b, e->name, 13);
 }
 
-static void draw_tracks(void)
+UI_SMALL static void draw_tracks(void)
 {
     uint32_t c;
     if (ui.force) {
@@ -622,9 +628,11 @@ static void draw_tracks(void)
 }
 
 /* oscilloscope of the output, triggered on a rising zero crossing */
-static void graph_scope(uint16_t c)
+#include "scratch.h"                                /* sloop-lab: the snapshot in the main loop's shared scratch */
+_Static_assert(sizeof main_scratch.snap == SCOPE_N * sizeof(int16_t), "the scratch holds the snapshot");
+UI_SMALL static void graph_scope(uint16_t c)
 {
-    static int16_t snap[SCOPE_N];
+    int16_t *snap = main_scratch.snap;
     uint32_t w = scope_w, i, trig = 0;
     int32_t py = 50, x, peak = 1500;
     for (i = 0; i < SCOPE_N; i++) {
@@ -648,7 +656,7 @@ static void graph_scope(uint16_t c)
     }
 }
 
-static void draw_graph(void)
+UI_SMALL static void draw_graph(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
@@ -725,7 +733,24 @@ static void draw_graph(void)
     ui.graph_top = (uint8_t)top;
 }
 
-static void draw_foot(void)
+/* the page shown: its place in its family and how many (*n), as SELECT walks them (2.7: the screens of their own, SONG
+ * and DRUMS, are not counted: SEQ is STEP 1/2, PATTERN 2/2; the page shown always counts) */
+UI_SMALL static uint32_t page_pos(uint32_t *n)
+{
+    const page_t *pg = cur_page();
+    uint32_t i, k = 0;
+    *n = 0;
+    for (i = 0; i < NPAGES; i++)
+        if (PAGES[i].fam == pg->fam && (i == ui.page || (page_shown(&PAGES[i]) && PAGES[i].scope != SC_SONG &&
+                                                         PAGES[i].scope != SC_DRUM))) {
+            (*n)++;
+            if (i == ui.page)
+                k = *n;
+        }
+    return k;
+}
+
+UI_SMALL static void draw_foot(void)
 {
     char s[48], pn[16], en[10], ti[20];
     const track_t *t = TSEL;
@@ -744,14 +769,8 @@ static void draw_foot(void)
     if (ui.home) {
         str_cpy(ti, "HOME", sizeof ti);
     } else {                                           /* page title + number in its family: "ENV DEST 2/2" */
-        uint32_t i, n = 0, k = 0;
+        uint32_t n, k = page_pos(&n);
         const char *pt = pg->scope == SC_ENGINE ? e->page_title[pg->id[0] != P_E0] : 0;   /* EDIT: the engine's */
-        for (i = 0; i < NPAGES; i++)
-            if (PAGES[i].fam == pg->fam) {
-                n++;
-                if (i == ui.page)
-                    k = n;
-            }
         str_cpy(ti, pt ? pt : pg->title, 10);
         if (n > 1) {
             str_cpy(ti + str_len(ti), " ", 4);
@@ -808,7 +827,7 @@ static void draw_foot(void)
     cv_text(236 - text_w(&FONT_S, ti), 20, &FONT_S, ti, C_GRAY);
     cv_blit(0, Y_FOOT);
 }
-static void draw_columns(void)
+UI_SMALL static void draw_columns(void)
 {
     uint32_t c;
     char val[12];
@@ -857,7 +876,7 @@ static void draw_columns(void)
         draw_column(0, "No.", val, u, VAL(0u), -1, ICON_NONE);
         draw_column(1, "ENG", ENGINES[TSEL->eng_req]->name, "", VAL(1u), -1, engine_icon(ENGINES[TSEL->eng_req]->name));
         draw_column(2, "", "", "", C_HI, -1, ICON_AUTO);
-        draw_column(3, "", "", "", C_HI, -1, ICON_AUTO);
+        draw_column(3, "FAV", fav_has(fav_key()) ? "ON" : "--", "", VAL(3u), -1, ICON_NONE);   /* (2.7) KNOB 4 */
         return;
     }
     if (cur_page()->graph == GR_USER) {                  /* SLOT, then three GO buttons */
@@ -892,7 +911,13 @@ static void draw_columns(void)
             fmt_int(sl + 1, TSEL->p[P_SLEN]);
             draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
             draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : C_DIM, -1, ICON_AUTO);
-            draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
+            if (step_on(st)) {                          /* a note: its LEN (2.6), steps with the TIEs after it */
+                char ln[8];
+                fmt_int(ln, (int32_t)note_len(TSEL, ui.cursor));
+                draw_column(2, "LEN", ln, "STEP", VAL(2u), -1, ICON_AUTO);
+            } else {
+                draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
+            }
             draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], "",
                         VAL(3u), -1, ICON_AUTO);
         }
@@ -901,6 +926,10 @@ static void draw_columns(void)
     for (c = 0; c < 4u; c++) {
         int16_t *vp;
         const param_desc_t *d = page_desc(cur_page(), c, &vp);
+        if (cur_page()->graph == GR_SLOTS && c == 1u) {   /* 2.6: ERASE, lit while the slot holds a project */
+            draw_column(1, "ERASE", "--", "", project_used((uint32_t)song.g[G_SLOT] - 1u) ? C_HI : C_DIM, -1, ICON_AUTO);
+            continue;
+        }
         if (!d || !d->label || d->label[0] == '-') {
             draw_column(c, "", "", "", C_HI, -1, ICON_AUTO);
             continue;
@@ -925,7 +954,7 @@ static void draw_columns(void)
 
 /* the UI's timers, once a frame whatever the screen (a message, the BPM highlight, an armed GO, the
  * white value of the knob just turned) */
-static void ui_timers(void)
+UI_SMALL static void ui_timers(void)
 {
     if (ui.msg_t)
         ui.msg_t--;
