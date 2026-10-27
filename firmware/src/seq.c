@@ -2381,12 +2381,12 @@ static void __attribute__((noinline)) midi_cc(track_t *t, uint32_t cc, uint32_t 
     const param_desc_t *d = 0;
     int16_t *slot = 0;
     uint32_t i, id = 0xFFFFu;
-    if (!is_drum(t) && cc >= OPCC0 && cc < OPCC0 + 6u * OPCC_K) {   /* the operators: before LEARN and the map */
+    if (midi_learned(cc, value))                       /* (a learned CC is the user's: not the map's) */
+        return;
+    if (!is_drum(t) && cc >= OPCC0 && cc < OPCC0 + 6u * OPCC_K) {   /* the operators: after LEARN, before the map */
         opcc_set(t, cc, value);
         return;
     }
-    if (midi_learned(cc, value))                       /* (a learned CC is the user's: not the map's) */
-        return;
     if (cc == 64u) {                                   /* the sustain pedal (4.0, SLOOP 2.6): >= 64 down */
         sus_set(t, value >= 64u);
         return;
