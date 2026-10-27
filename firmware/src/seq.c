@@ -2330,11 +2330,61 @@ static int __attribute__((noinline)) midi_learned(uint32_t cc, uint32_t value)
     return hit;
 }
 
+/* The DX7 voice's operators over MIDI CC (BCR2000 and the like): on a synth track, CC 10..99 are 6 operators x 15
+ * parameters, CC = 10 + 15 x (OP - 1) + k, k = 0..14: Rate 1-4, Level 1-4, Output Level, Osc Mode, Coarse, Fine,
+ * Detune, Key Velocity, Rate Scaling. The value 0..127 is spread over the parameter's DX7 range (Detune: 64 = 0).
+ * It takes the place of what these CC numbers did on a synth track (10 PAN, 11, 32, 38, 64 sustain, 71..75, 91, 93, 94);
+ * the drum track keeps its CCs. The voice is edited as the voice list does (ui_voice.c ve_set): a user slot
+ * U01..U32, a factory voice is copied into the first INIT VOICE slot first (RAM; the bank is kept with SAVE / STORE) */
+#define OPCC0 10u
+#define OPCC_K 15u
+static const uint8_t OPCC_OFF[OPCC_K] = {0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 15, 13};
+static int opcc_is_init(uint32_t k)                  /* slot k still holds the INIT VOICE name */
+{
+    static const char INIT[] = "INIT VOICE";
+    uint32_t i;
+    for (i = 0; i < sizeof INIT; i++)
+        if (dx_user_name[k][i] != INIT[i])
+            return 0;
+    return 1;
+}
+static int opcc_slot(track_t *t)                     /* the slot this track's voice edits go to, -1: none free */
+{
+    uint32_t vi = (uint32_t)t->p[P_E0] % DX_NVOICES, k;
+    uint8_t b[128];
+    if (vi >= DX_NSYNTH)
+        return (int)(vi - DX_NSYNTH);
+    if (!dx_user_ok)
+        dx_bank_init_all();
+    for (k = 0; k < DX_NUSER && !opcc_is_init(k); k++)
+        ;
+    if (k == DX_NUSER)
+        return -1;
+    dx_voice_get(vi, b);
+    dx_user_put(k, b);
+    t->p[P_E0] = (int16_t)(DX_NSYNTH + k);
+    return (int)k;
+}
+static void opcc_set(track_t *t, uint32_t cc, uint32_t value)
+{
+    uint32_t n = cc - OPCC0, op = n / OPCC_K, idx = (5u - op) * 21u + OPCC_OFF[n % OPCC_K], mx = dx_param_max(idx);
+    int k;
+    if (dx_bank_busy)                                /* (a bank upload is on) */
+        return;
+    k = opcc_slot(t);
+    if (k >= 0)
+        dx_user_param_set((uint32_t)k, idx, ((value & 127u) * mx + 63u) / 127u);
+}
+
 static void __attribute__((noinline)) midi_cc(track_t *t, uint32_t cc, uint32_t value)
 {
     const param_desc_t *d = 0;
     int16_t *slot = 0;
     uint32_t i, id = 0xFFFFu;
+    if (!is_drum(t) && cc >= OPCC0 && cc < OPCC0 + 6u * OPCC_K) {   /* the operators: before LEARN and the map */
+        opcc_set(t, cc, value);
+        return;
+    }
     if (midi_learned(cc, value))                       /* (a learned CC is the user's: not the map's) */
         return;
     if (cc == 64u) {                                   /* the sustain pedal (4.0, SLOOP 2.6): >= 64 down */
