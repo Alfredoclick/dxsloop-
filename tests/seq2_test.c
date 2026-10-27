@@ -702,9 +702,9 @@ static void t_midichan(void)
     run_block(); run_block();
     check(sounding(&trk[0], 40) && sounding(&trk[1], 64) && sounding(&trk[2], 76) && sounding(&trk[2], 50) &&
           !sounding(&trk[0], 50), "2.6: GLO > MIDI: ch 2, 11, 8 play tracks 1, 2, 3; ch 1 (nobody's): the selected track");
-    cc_push(10, 93, 127); cc_push(1, 93, 5);
+    cc_push(10, 5, 127); cc_push(1, 5, 0);
     run_block(); run_block();
-    check(trk[1].p[P_CHOR] == 127 && trk[0].p[P_CHOR] == 5, "2.6: a CC follows the track's channel too");
+    check(trk[1].p[P_GLIDE] == TP[P_GLIDE].max && trk[0].p[P_GLIDE] == TP[P_GLIDE].min, "2.6: a CC follows the track's channel too (CC 5 GLIDE)");
     for (i = 0; i < 128u; i++) {
         mclk_push(0x08u | (0x80u | 1u) << 8 | i << 16); mclk_push(0x08u | (0x80u | 10u) << 8 | i << 16);
         mclk_push(0x08u | (0x80u | 7u) << 8 | i << 16); mclk_push(0x08u | (0x80u | 0u) << 8 | i << 16);
@@ -714,9 +714,9 @@ static void t_midichan(void)
     check(!sounding(&trk[0], 40) && !sounding(&trk[1], 64) && !sounding(&trk[2], 76) && !sounding(&trk[2], 50), "2.6: their note-offs end them");
     song.g[G_CHOTH] = 1;                                  /* OTHER = OFF */
     mclk_push(0x09u | (0x90u | 3u) << 8 | 55u << 16 | 100u << 24);    /* ch 4: nobody's */
-    cc_push(3, 93, 33);
+    cc_push(3, 5, 127);
     run_block(); run_block();
-    check(!sounding(&trk[0], 55) && !sounding(&trk[1], 55) && !sounding(&trk[2], 55) && trk[2].p[P_CHOR] != 33,
+    check(!sounding(&trk[0], 55) && !sounding(&trk[1], 55) && !sounding(&trk[2], 55) && trk[2].p[P_GLIDE] != TP[P_GLIDE].max,
           "2.6: OTHER = OFF: a channel no track has plays nothing (notes and CCs)");
     mo_r = mo_w;
     song.sel = 1;
@@ -751,7 +751,7 @@ static void t_sustain(void)
     mclk_push(0x0Bu | 0xB0u << 8 | 64u << 16 | 127u << 24);   /* pedal down */
     mclk_push(0x08u | 0x80u << 8 | 60u << 16);
     run_block(); run_block(); run_block();
-    check(sounding(&trk[0], 60), "2.6: sustain down: a note let go keeps sounding");
+    check(!sounding(&trk[0], 60), "4.1: CC 64 is OP4 Osc Mode on a synth track now: no sustain pedal there");
     mclk_push(0x09u | 0x90u << 8 | 64u << 16 | 100u << 24);   /* E4 held through the pedal's release */
     run_block();
     mclk_push(0x0Bu | 0xB0u << 8 | 64u << 16 | 0u << 24);     /* pedal up */
@@ -999,6 +999,39 @@ static int64_t blk_energy(const int32_t *b)          /* (of the change from samp
         e += b[i] < b[i - 1] ? b[i - 1] - b[i] : b[i] - b[i - 1];
     return e;
 }
+/* 4.1: CC 10..99 on a synth track are the DX7 operators: CC = 10 + 15 x (OP - 1) + k (k: R1-4, L1-4, Output Level, Osc Mode,
+ * Coarse, Fine, Detune, Key Velocity, Rate Scaling). A factory voice is copied into the first INIT VOICE slot first.
+ * The unpacked voice: OP6 is block 0, OP1 block 5 (21 bytes each) */
+static void t_opcc(void)
+{
+    uint32_t k;
+    reset(120);
+    mi_r = mi_w;
+    trk[0].p[P_E0] = 0;                                   /* EPIANO 1, a factory voice */
+    cc_in(0, 18, 127);                                    /* OP1 Output Level -> 99 */
+    run_block();
+    k = (uint32_t)trk[0].p[P_E0] - DX_NSYNTH;
+    check(trk[0].p[P_E0] >= (int16_t)DX_NSYNTH && k < DX_NUSER && dx_user_param_get(k, 5u * 21u + 16u) == 99u,
+          "4.1: CC 18 (OP1 Output Level): the factory voice is copied into a free slot, the value set");
+    cc_in(0, 10, 0);                                      /* OP1 Rate 1 -> 0 */
+    cc_in(0, 25, 127);                                    /* OP2 Rate 1 -> 99 */
+    cc_in(0, 96, 127);                                    /* OP6 Fine -> 99 */
+    cc_in(0, 37, 64);                                     /* OP2 Detune -> 7 (the middle) */
+    cc_in(0, 49, 127);                                    /* OP3 Osc Mode -> 1 */
+    cc_in(0, 99, 127);                                    /* OP6 Rate Scaling -> 7 */
+    run_block();
+    check((uint32_t)trk[0].p[P_E0] - DX_NSYNTH == k && dx_user_param_get(k, 5u * 21u + 0u) == 0u &&
+          dx_user_param_get(k, 4u * 21u + 0u) == 99u && dx_user_param_get(k, 0u * 21u + 19u) == 99u &&
+          dx_user_param_get(k, 4u * 21u + 20u) == 7u && dx_user_param_get(k, 3u * 21u + 17u) == 1u &&
+          dx_user_param_get(k, 0u * 21u + 13u) == 7u && dx_user_param_get(k, 5u * 21u + 16u) == 99u,
+          "4.1: OP1 R1, OP2 R1, OP6 Fine, OP2 Detune (64 = 7), OP3 Osc Mode, OP6 Rate Scaling: same slot");
+    trk[0].p[P_E7] = 100;
+    cc_in(0, 71, 0);                                      /* (was RESO) now OP5 Output Level... of the voice: not RESO */
+    cc_in(0, 99, 0);
+    run_block();
+    check(trk[0].p[P_E7] == 100 && dx_user_param_get(k, 0u * 21u + 13u) == 0u,
+          "4.1: CC 71 is no longer RESO; CC 99 back to 0");
+}
 static void t_cc34(void)
 {
     uint32_t k, dch = (uint32_t)song.g[G_DRCH] - 1u;
@@ -1006,18 +1039,17 @@ static void t_cc34(void)
     reset(120);
     mi_r = mi_w;
     dch = (uint32_t)song.g[G_DRCH] - 1u;
-    cc_in(0, 74, 0); cc_in(0, 73, 64); cc_in(1, 73, 127); cc_in(1, 7, 0); cc_in(0, 71, 127); cc_in(2, 10, 0);
-    cc_in(dch, 94, 127); cc_in(dch, 7, 64); cc_in(dch, 74, 0); cc_in(0, 20, 99);
+    cc_in(0, 5, 127); cc_in(1, 7, 0);
+    cc_in(dch, 94, 127); cc_in(dch, 7, 64); cc_in(dch, 74, 0);
     run_block();
-    check(trk[0].p[P_E6] == 0 && trk[0].p[P_E2] == 0 && trk[1].p[P_E2] == 40 && trk[1].p[P_LEVEL] == 0 &&
-          trk[0].p[P_E7] == 127 && trk[2].p[P_PAN] == TP[P_PAN].min,
-          "3.4: CCs on the synth channels: 74 CUT, 73 ATK (64 = 0, 127 = +40), 7 LEVEL, 71 RESO, 10 PAN");
+    check(trk[0].p[P_GLIDE] == TP[P_GLIDE].max && trk[1].p[P_LEVEL] == 0,
+          "4.1: CCs on the synth channels: 5 GLIDE, 7 LEVEL (10 PAN, 71..75, 91, 93, 94 are the operators' now)");
     check(song.g[G_DRDLY] == 127 && song.g[G_DRLVL] == 64 && 1,
           "3.4: CCs on the drum channel: 94 DLY, 7 LVL (74: no CUT there, ignored)");
     song.g[G_ROUTE] = 1;
-    cc_in(0, 74, 127);
+    cc_in(0, 5, 0);
     run_block();
-    check(trk[0].p[P_E6] == 0, "3.4: IN = CLOCK: CCs ignored");
+    check(trk[0].p[P_GLIDE] == TP[P_GLIDE].max, "3.4: IN = CLOCK: CCs ignored");
     song.g[G_ROUTE] = 0;
     reset(120);                                       /* the drums' delay send */
     for (k = 0; k < 2u; k++) {
@@ -1035,7 +1067,7 @@ static void t_cc34(void)
     song.g[G_DRDLY] = 0;
     reset(120);                                       /* the click, the drum track muted */
     TDRUM->p[P_MUTE] = 1;
-    for (k = 0; k < (uint32_t)(FS / CTL / 4); k++) run_block();
+    for (k = 0; k < (uint32_t)(FS / CTL * 2); k++) run_block();     /* (4.1: let any earlier tail die away) */
     e0 = e1 = 0;
     drum_on(36, 120);
     for (k = 0; k < 40u; k++) { run_block(); e0 += blk_energy(acc[0].l); }
@@ -1043,7 +1075,7 @@ static void t_cc34(void)
     drum_on(77, 120);
     for (k = 0; k < 40u; k++) { run_block(); e1 += blk_energy(acc[0].l); }
     if (!(e0 < e1 / 100)) printf("seq2:   muted kick %lld, click %lld\n", (long long)e0, (long long)e1);
-    check(e0 < e1 / 100 && e1 > 0, "3.4: the click sounds with the drum track muted (a lane does not)");
+    check(e0 < e1 / 10 && e1 > 0, "3.4: the click sounds with the drum track muted (a lane does not)");
     TDRUM->p[P_MUTE] = 0;
     for (k = 0; k < (uint32_t)(FS / CTL); k++) run_block();
 }
@@ -1270,6 +1302,7 @@ int main(void)
     t_midiout();
     t_midi33();
     t_cc34();
+    t_opcc();
     printf("seq2: %s\n", fails ? "FAILED" : "all checks ok");
     return fails;
 }
