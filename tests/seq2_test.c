@@ -1008,10 +1008,10 @@ static void t_opcc(void)
     reset(120);
     mi_r = mi_w;
     trk[0].p[P_E0] = 0;                                   /* EPIANO 1, a factory voice */
-    cc_in(0, 18, 127);                                    /* OP1 Output Level -> 99 */
+    cc_in(0, 18, 0);                                      /* OP1 Output Level -> 0 (not the factory value: else nothing is copied) */
     run_block();
     k = (uint32_t)trk[0].p[P_E0] - DX_NSYNTH;
-    check(trk[0].p[P_E0] >= (int16_t)DX_NSYNTH && k < DX_NUSER && dx_user_param_get(k, 5u * 21u + 16u) == 99u,
+    check(trk[0].p[P_E0] >= (int16_t)DX_NSYNTH && k < DX_NUSER && dx_user_param_get(k, 5u * 21u + 16u) == 0u,
           "4.1: CC 18 (OP1 Output Level): the factory voice is copied into a free slot, the value set");
     cc_in(0, 10, 0);                                      /* OP1 Rate 1 -> 0 */
     cc_in(0, 25, 127);                                    /* OP2 Rate 1 -> 99 */
@@ -1023,7 +1023,7 @@ static void t_opcc(void)
     check((uint32_t)trk[0].p[P_E0] - DX_NSYNTH == k && dx_user_param_get(k, 5u * 21u + 0u) == 0u &&
           dx_user_param_get(k, 4u * 21u + 0u) == 99u && dx_user_param_get(k, 0u * 21u + 19u) == 99u &&
           dx_user_param_get(k, 4u * 21u + 20u) == 7u && dx_user_param_get(k, 3u * 21u + 17u) == 1u &&
-          dx_user_param_get(k, 0u * 21u + 13u) == 7u && dx_user_param_get(k, 5u * 21u + 16u) == 99u,
+          dx_user_param_get(k, 0u * 21u + 13u) == 7u && dx_user_param_get(k, 5u * 21u + 16u) == 0u,
           "4.1: OP1 R1, OP2 R1, OP6 Fine, OP2 Detune (64 = 7), OP3 Osc Mode, OP6 Rate Scaling: same slot");
     trk[0].p[P_E7] = 100;
     cc_in(0, 71, 0);                                      /* (was RESO) now OP5 Output Level... of the voice: not RESO */
@@ -1031,6 +1031,11 @@ static void t_opcc(void)
     run_block();
     check(trk[0].p[P_E7] == 100 && dx_user_param_get(k, 0u * 21u + 13u) == 0u,
           "4.1: CC 71 is no longer RESO; CC 99 back to 0");
+    {   uint32_t g = dx_edit_gen;                         /* the same values again: the voice is not touched */
+        cc_in(0, 99, 0); cc_in(0, 18, 0); cc_in(0, 10, 0);
+        run_block();
+        check(dx_edit_gen == g, "4.1: a CC with the value the parameter already has changes nothing (a controller that resends)");
+    }
 }
 static void t_cc34(void)
 {
