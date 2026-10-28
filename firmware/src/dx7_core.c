@@ -106,8 +106,9 @@ static void dx_env_update(dx_env_t *e, const uint8_t *r, const uint8_t *l, int o
     }
     e->outlevel = (int16_t)ol;
     e->rate_scaling = (int16_t)rate_scaling;
-    if (e->down)
-        dx_env_advance(e, 2);
+    if (e->down)                                  /* (Dexed jumps to stage 2 here, which is heard as a jump of the sound
+                                                   * while a knob turns in the attack / decay: stay in the stage that runs) */
+        dx_env_advance(e, e->ix < 2 ? e->ix : 2);
 }
 
 static void dx_env_init(dx_env_t *e, const uint8_t *r, const uint8_t *l, int ol, int rate_scaling)

@@ -2368,12 +2368,22 @@ static int opcc_slot(track_t *t)                     /* the slot this track's vo
 static void opcc_set(track_t *t, uint32_t cc, uint32_t value)
 {
     uint32_t n = cc - OPCC0, op = n / OPCC_K, idx = (5u - op) * 21u + OPCC_OFF[n % OPCC_K], mx = dx_param_max(idx);
+    uint32_t nv = ((value & 127u) * mx + 63u) / 127u, vi = (uint32_t)t->p[P_E0] % DX_NVOICES;
     int k;
     if (dx_bank_busy)                                /* (a bank upload is on) */
         return;
+    {   /* the same value again (a controller that sends all its knobs with every note, a knob that did not move a step):
+         * nothing to do, no voice copy and no rebuild of the sounding notes */
+        uint8_t b[128], u[156];
+        dx_voice_get(vi, b);
+        dx_unpack(b, u);
+        dx_sanitize(u);
+        if (u[idx] == nv)
+            return;
+    }
     k = opcc_slot(t);
     if (k >= 0)
-        dx_user_param_set((uint32_t)k, idx, ((value & 127u) * mx + 63u) / 127u);
+        dx_user_param_set((uint32_t)k, idx, nv);
 }
 
 static void __attribute__((noinline)) midi_cc(track_t *t, uint32_t cc, uint32_t value)
